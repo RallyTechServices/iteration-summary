@@ -151,14 +151,10 @@ Ext.define("TSIterationSummary", {
     _getColumns: function() {
         return [
         { 
-            text: 'Program&nbsp;Information',
-            columns: [
-                { dataIndex:'Name', text:'Program/Team', draggable: false, hideable: false}
-            ],
+            dataIndex:'Name', text:'Program/Team', draggable: false, hideable: false,
             draggable: false, 
             hideable: false,
-            sortable: false,
-            width: 250
+            sortable: false
         },
         {
             text: 'Velocity',

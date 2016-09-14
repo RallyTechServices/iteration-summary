@@ -3,13 +3,13 @@
 <head>
     <title>TS Iteration Summary</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Sep 13 2016 20:04:20 GMT-0700 (PDT) -->
+    <!--  Build Date: Tue Sep 13 2016 20:06:59 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Sep 13 2016 20:04:20 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Tue Sep 13 2016 20:06:59 GMT-0700 (PDT)";
         var STORY    = "US676";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 5201129112;
+        var CHECKSUM = 5149360273;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -383,14 +383,10 @@ Ext.define("TSIterationSummary", {
     _getColumns: function() {
         return [
         { 
-            text: 'Program&nbsp;Information',
-            columns: [
-                { dataIndex:'Name', text:'Program/Team', draggable: false, hideable: false}
-            ],
+            dataIndex:'Name', text:'Program/Team', draggable: false, hideable: false,
             draggable: false, 
             hideable: false,
-            sortable: false,
-            width: 250
+            sortable: false
         },
         {
             text: 'Velocity',
