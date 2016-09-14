@@ -3,13 +3,13 @@
 <head>
     <title>TS Iteration Summary</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Sep 13 2016 17:34:34 GMT-0700 (PDT) -->
+    <!--  Build Date: Tue Sep 13 2016 20:04:20 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Sep 13 2016 17:34:34 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Tue Sep 13 2016 20:04:20 GMT-0700 (PDT)";
         var STORY    = "US676";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 3065726819;
+        var CHECKSUM = 5201129112;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -215,8 +215,19 @@ Ext.define('TSRow',{
     fields: [
         { name: 'ObjectID', type:'integer' },
         { name: 'Name', type:'string' },
-        { name: 'PlanEstimate', type: 'integer'},
-        { name: 'PlannedVelocity', type:'integer'}
+        { name: 'Velocity', type: 'number', defaultValue: -1},
+        { name: 'PlanEstimate', type: 'number'},
+        { name: 'PlannedVelocity', type:'number'},
+        { name: 'TotalCount', type: 'number', defaultValue: -1},
+        { name: 'AcceptedCount', type: 'number', defaultValue: -1},
+        { name: 'CompletedCount', type:'number', defaultValue: -1},
+        { name: 'TotalSize', type: 'number', defaultValue: -1},
+        { name: 'AcceptedSize', type: 'number', defaultValue: -1},
+        { name: 'CompletedSize', type:'number', defaultValue: -1},
+        { name: 'SpillInCount', type: 'number', defaultValue: -1},
+        { name: 'SpillOutCount', type: 'number', defaultValue: -1},
+        { name: 'SpillInSize', type: 'number', defaultValue: -1},
+        { name: 'SpillOutSize', type: 'number', defaultValue: -1}
     ]
 });
 Ext.define("TSIterationSummary", {
@@ -371,10 +382,102 @@ Ext.define("TSIterationSummary", {
     
     _getColumns: function() {
         return [
-            {dataIndex:'Name', text:'Program/Team'},
-            {dataIndex:'PlanEstimate', text: 'Plan Estimate'},
-            {dataIndex:'PlannedVelocity', text:'Planned Velocity'}
-        ];
+        { 
+            text: 'Program&nbsp;Information',
+            columns: [
+                { dataIndex:'Name', text:'Program/Team', draggable: false, hideable: false}
+            ],
+            draggable: false, 
+            hideable: false,
+            sortable: false,
+            width: 250
+        },
+        {
+            text: 'Velocity',
+            columns: [{ 
+                text: 'Story Points',
+                columns: [
+                    { dataIndex:'Velocity', text: 'Velocity', draggable: false, hideable: false}
+                ],
+                draggable: false, 
+                hideable: false,
+                sortable: false
+            }],
+            draggable: false, 
+            hideable: false,
+            sortable: false
+        },
+        {
+            text: 'Capacity Planning',
+            columns: [{ 
+                text: 'Story Points',
+                columns: [
+                    { dataIndex:'PlanEstimate', text: 'Plan Estimate', draggable: false, hideable: false},
+                    { dataIndex:'PlannedVelocity', text:'Planned Velocity', draggable: false, hideable: false}
+                ],
+                draggable: false, 
+                hideable: false,
+                sortable: false
+            }],
+            draggable: false, 
+            hideable: false,
+            sortable: false
+            
+        },
+        {
+            text: 'Capacity Planning',
+            columns: [{ 
+                text: 'Story Count',
+                columns: [
+                    { dataIndex: 'TotalCount', text: 'Total', csvText: 'Total Count', draggable: false, hideable: false},
+                    { dataIndex: 'AcceptedCount', text:'Accepted', csvText: 'Accepted Count', draggable: false, hideable: false},
+                    { dataIndex: 'CompletedCount', text: 'Completed', csvText: 'Completed Count', draggable: false, hideable: false}
+                ],
+                draggable: false, 
+                hideable: false,
+                sortable: false
+            },
+            { 
+                text: 'Story Points',
+                columns: [
+                    { dataIndex: 'TotalSize', text:'Total', csvText:'Total Size', draggable: false, hideable: false},
+                    { dataIndex: 'AcceptedSize', text: 'Accepted', csvText: 'Accepted Size', draggable: false, hideable: false},
+                    { dataIndex: 'CompletedSize', text: 'Completed', csvText: 'Completed Size', draggable: false, hideable: false}
+                ],
+                draggable: false, 
+                hideable: false,
+                sortable: false
+            }],
+            draggable: false, 
+            hideable: false,
+            sortable: false
+        },
+        {
+            text: 'Spill-over',
+            columns: [{ 
+                text: 'Story Count',
+                columns: [
+                    { dataIndex: 'SpillInCount', text: 'In', csvText: 'In Count', draggable: false, hideable: false},
+                    { dataIndex: 'SpillOutCount', text: 'Out', csvText: 'Out Count', draggable: false, hideable: false}
+                ],
+                draggable: false, 
+                hideable: false,
+                sortable: false
+            },
+            { 
+                text: 'Story Points',
+                columns: [
+                    { dataIndex: 'SpillInSize', text: 'In', csvText: 'In Size', draggable: false, hideable: false},
+                    { dataIndex: 'SpillOutSize', text: 'Out', csvText: 'Out Size', draggable: false, hideable: false}
+                ],
+                draggable: false, 
+                hideable: false,
+                sortable: false
+            }],
+            draggable: false, 
+            hideable: false,
+            sortable: false
+        }];
     },
     
     getOptions: function() {

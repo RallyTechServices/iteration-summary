@@ -150,10 +150,102 @@ Ext.define("TSIterationSummary", {
     
     _getColumns: function() {
         return [
-            {dataIndex:'Name', text:'Program/Team'},
-            {dataIndex:'PlanEstimate', text: 'Plan Estimate'},
-            {dataIndex:'PlannedVelocity', text:'Planned Velocity'}
-        ];
+        { 
+            text: 'Program&nbsp;Information',
+            columns: [
+                { dataIndex:'Name', text:'Program/Team', draggable: false, hideable: false}
+            ],
+            draggable: false, 
+            hideable: false,
+            sortable: false,
+            width: 250
+        },
+        {
+            text: 'Velocity',
+            columns: [{ 
+                text: 'Story Points',
+                columns: [
+                    { dataIndex:'Velocity', text: 'Velocity', draggable: false, hideable: false}
+                ],
+                draggable: false, 
+                hideable: false,
+                sortable: false
+            }],
+            draggable: false, 
+            hideable: false,
+            sortable: false
+        },
+        {
+            text: 'Capacity Planning',
+            columns: [{ 
+                text: 'Story Points',
+                columns: [
+                    { dataIndex:'PlanEstimate', text: 'Plan Estimate', draggable: false, hideable: false},
+                    { dataIndex:'PlannedVelocity', text:'Planned Velocity', draggable: false, hideable: false}
+                ],
+                draggable: false, 
+                hideable: false,
+                sortable: false
+            }],
+            draggable: false, 
+            hideable: false,
+            sortable: false
+            
+        },
+        {
+            text: 'Capacity Planning',
+            columns: [{ 
+                text: 'Story Count',
+                columns: [
+                    { dataIndex: 'TotalCount', text: 'Total', csvText: 'Total Count', draggable: false, hideable: false},
+                    { dataIndex: 'AcceptedCount', text:'Accepted', csvText: 'Accepted Count', draggable: false, hideable: false},
+                    { dataIndex: 'CompletedCount', text: 'Completed', csvText: 'Completed Count', draggable: false, hideable: false}
+                ],
+                draggable: false, 
+                hideable: false,
+                sortable: false
+            },
+            { 
+                text: 'Story Points',
+                columns: [
+                    { dataIndex: 'TotalSize', text:'Total', csvText:'Total Size', draggable: false, hideable: false},
+                    { dataIndex: 'AcceptedSize', text: 'Accepted', csvText: 'Accepted Size', draggable: false, hideable: false},
+                    { dataIndex: 'CompletedSize', text: 'Completed', csvText: 'Completed Size', draggable: false, hideable: false}
+                ],
+                draggable: false, 
+                hideable: false,
+                sortable: false
+            }],
+            draggable: false, 
+            hideable: false,
+            sortable: false
+        },
+        {
+            text: 'Spill-over',
+            columns: [{ 
+                text: 'Story Count',
+                columns: [
+                    { dataIndex: 'SpillInCount', text: 'In', csvText: 'In Count', draggable: false, hideable: false},
+                    { dataIndex: 'SpillOutCount', text: 'Out', csvText: 'Out Count', draggable: false, hideable: false}
+                ],
+                draggable: false, 
+                hideable: false,
+                sortable: false
+            },
+            { 
+                text: 'Story Points',
+                columns: [
+                    { dataIndex: 'SpillInSize', text: 'In', csvText: 'In Size', draggable: false, hideable: false},
+                    { dataIndex: 'SpillOutSize', text: 'Out', csvText: 'Out Size', draggable: false, hideable: false}
+                ],
+                draggable: false, 
+                hideable: false,
+                sortable: false
+            }],
+            draggable: false, 
+            hideable: false,
+            sortable: false
+        }];
     },
     
     getOptions: function() {
