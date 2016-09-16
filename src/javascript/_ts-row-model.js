@@ -17,6 +17,26 @@ Ext.define('TSRow',{
         { name: 'SpillInCount', type: 'number', defaultValue: -1},
         { name: 'SpillOutCount', type: 'number', defaultValue: -1},
         { name: 'SpillInSize', type: 'number', defaultValue: -1},
-        { name: 'SpillOutSize', type: 'number', defaultValue: -1}
-    ]
+        { name: 'SpillOutSize', type: 'number', defaultValue: -1},
+        { name: 'Stories', type: 'object', defaultValue: [] }
+    ],
+    
+    addStory: function(story) {
+        var stories = this.get('Stories') || [];
+        stories.push(story);
+        
+        var size = story.get('PlanEstimate') || 0;
+        if ( !Ext.isEmpty(story.get('AcceptedDate')) ) { 
+            this.addToField('Velocity', size);
+            this.addToField('AcceptedCount', 1);
+        }
+        
+        this.addToField('TotalCount',1);
+        this.addToField('TotalSize', size);
+        
+    },
+    
+    addToField: function(fieldname, delta) {
+        return this.set(fieldname, this.get(fieldname) + delta);
+    }
 });

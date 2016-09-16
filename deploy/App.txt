@@ -3,13 +3,13 @@
 <head>
     <title>TS Iteration Summary</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Thu Sep 15 2016 20:55:47 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Sep 15 2016 21:32:14 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Sep 15 2016 20:55:47 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Thu Sep 15 2016 21:32:14 GMT-0700 (PDT)";
         var STORY    = "US676";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 32580968171;
+        var CHECKSUM = 36155219298;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -801,7 +801,7 @@ Ext.define('CA.technicalservices.ProjectTreePickerSettingsField',{
                 var setting = decodedValue[project.get('_ref')];
                 if ( setting && setting !== {} ) {
                     data.push({
-                        projectRef: project.get('_ref'), 
+                        _ref: project.get('_ref'), 
                         projectName: project.get('Name'),
                         Name: project.get('Name'),
                         ObjectID: project.get('ObjectID')
@@ -813,7 +813,7 @@ Ext.define('CA.technicalservices.ProjectTreePickerSettingsField',{
         }
 
         var custom_store = Ext.create('Ext.data.Store', {
-            fields: ['projectRef', 'projectName','Name', 'ObjectID'],
+            fields: ['_ref', 'projectName','Name', 'ObjectID'],
             data: data
         });
         
@@ -848,7 +848,7 @@ Ext.define('CA.technicalservices.ProjectTreePickerSettingsField',{
                     Ext.create('CA.technicalservices.ProjectTreePickerDialog',{
                         autoShow: true,
                         width: width,
-                        selectedRefs: _.pluck(data, 'projectRef'),
+                        selectedRefs: _.pluck(data, '_ref'),
                         listeners: {
                             scope: this,
                             itemschosen: function(items){
@@ -856,9 +856,9 @@ Ext.define('CA.technicalservices.ProjectTreePickerSettingsField',{
                                     store = this._grid.getStore();
 
                                 Ext.Array.each(items, function(item){
-                                    if (!store.findRecord('projectRef',item.get('_ref'))){
+                                    if (!store.findRecord('_ref',item.get('_ref'))){
                                         new_data.push({
-                                            projectRef: item.get('_ref'),
+                                            _ref: item.get('_ref'),
                                             projectName: item.get('Name'),
                                             Name: item.get('Name'),
                                             ObjectID: item.get('ObjectID')
@@ -892,7 +892,7 @@ Ext.define('CA.technicalservices.ProjectTreePickerSettingsField',{
         },
         {
             text: 'Program',
-            dataIndex: 'projectRef',
+            dataIndex: '_ref',
             flex: 1,
             editor: false,
             renderer: function(v, m, r){
@@ -921,10 +921,11 @@ Ext.define('CA.technicalservices.ProjectTreePickerSettingsField',{
         var store = this._grid.getStore();
 
         store.each(function(record) {
-            if (record.get('projectRef')) {
-                mappings[record.get('projectRef')] = {
+            if (record.get('_ref')) {
+                mappings[record.get('_ref')] = {
                     'Name': record.get('projectName') || "",
-                    'ObjectID': record.get('ObjectID') || ""
+                    'ObjectID': record.get('ObjectID') || "",
+                    '_ref': record.get('_ref') || ""
                 }
             }
         }, this);
@@ -961,8 +962,28 @@ Ext.define('TSRow',{
         { name: 'SpillInCount', type: 'number', defaultValue: -1},
         { name: 'SpillOutCount', type: 'number', defaultValue: -1},
         { name: 'SpillInSize', type: 'number', defaultValue: -1},
-        { name: 'SpillOutSize', type: 'number', defaultValue: -1}
-    ]
+        { name: 'SpillOutSize', type: 'number', defaultValue: -1},
+        { name: 'Stories', type: 'object', defaultValue: [] }
+    ],
+    
+    addStory: function(story) {
+        var stories = this.get('Stories') || [];
+        stories.push(story);
+        
+        var size = story.get('PlanEstimate') || 0;
+        if ( !Ext.isEmpty(story.get('AcceptedDate')) ) { 
+            this.addToField('Velocity', size);
+            this.addToField('AcceptedCount', 1);
+        }
+        
+        this.addToField('TotalCount',1);
+        this.addToField('TotalSize', size);
+        
+    },
+    
+    addToField: function(fieldname, delta) {
+        return this.set(fieldname, this.get(fieldname) + delta);
+    }
 });
 Ext.define("TSIterationSummary", {
     extend: 'Rally.app.App',
@@ -1035,6 +1056,8 @@ Ext.define("TSIterationSummary", {
         context.projectScopeDown = false;
         context.projectScopeUp = false;
         
+        console.log(context);
+        
         this.iteration_selector = container.add({ 
             xtype:'rallyiterationcombobox',
             fieldLabel: 'Iteration:',
@@ -1070,6 +1093,7 @@ Ext.define("TSIterationSummary", {
         
         var promises = [];
         
+        // CAUTION: expecting the function calls to modify the item in the array in place
         Ext.Array.each(rows, function(row){
             promises.push(function(){
                 return me._gatherIterationInformationForRow(iteration,row);
@@ -1078,7 +1102,7 @@ Ext.define("TSIterationSummary", {
         
         this.setLoading("Gathering Iterations...");
         Deft.Chain.sequence(promises,me).then({
-            success: function(rows) {
+            success: function(results) {
                 this._makeGrid(rows);
             },
             failure: function(msg) {
@@ -1091,8 +1115,15 @@ Ext.define("TSIterationSummary", {
     },
     
     _gatherIterationInformationForRow: function(iteration_name,row){
+        var me = this;
+        return Deft.Chain.sequence([
+            function() { return me._gatherInitialIterationInformationForRow(iteration_name, row); },
+            function() { return me._gatherStoriesInIterationForRow(iteration_name, row); }
+        ], this);
+    },
+    
+    _gatherInitialIterationInformationForRow: function(iteration_name,row) {
         var deferred = Ext.create('Deft.Deferred');
-        
         var config = {
             model: 'Iteration',
             filters: [
@@ -1128,8 +1159,40 @@ Ext.define("TSIterationSummary", {
         return deferred.promise;
     },
     
+    _gatherStoriesInIterationForRow: function( iteration_name, row ) {
+        var deferred = Ext.create('Deft.Deferred');
+        var config = {
+            model: 'UserStory',
+            filters: [
+                {property:'Iteration.Name',value:iteration_name}
+            ],
+            limit: 1,
+            pageSize: 1,
+            fetch: ['Name','ObjectID','PlanEstimate','AcceptedDate'],
+            context: {
+                projectScopeUp: false,
+                projectScopeDown: true,
+                project: row.get('_ref')
+            }
+        };
+        
+        this._loadWsapiRecords(config).then({
+            success: function(stories) {
+                Ext.Array.each(stories, function(story) {
+                    row.addStory(story);
+                });
+                deferred.resolve(row);
+            },
+            failure: function(msg) { deferred.reject(msg); },
+            scope: this
+        });
+        
+        return deferred.promise;
+    },
+    
     _loadProjects: function() {
         var programs = this.getSetting('showPrograms');
+        this.setLoading('Fetching Projects...');
         
         if ( Ext.isEmpty(programs) || programs == {} || programs == "{}") {
             var config = {

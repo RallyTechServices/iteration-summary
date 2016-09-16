@@ -69,6 +69,8 @@ Ext.define("TSIterationSummary", {
         context.projectScopeDown = false;
         context.projectScopeUp = false;
         
+        console.log(context);
+        
         this.iteration_selector = container.add({ 
             xtype:'rallyiterationcombobox',
             fieldLabel: 'Iteration:',
@@ -104,6 +106,7 @@ Ext.define("TSIterationSummary", {
         
         var promises = [];
         
+        // CAUTION: expecting the function calls to modify the item in the array in place
         Ext.Array.each(rows, function(row){
             promises.push(function(){
                 return me._gatherIterationInformationForRow(iteration,row);
@@ -112,7 +115,7 @@ Ext.define("TSIterationSummary", {
         
         this.setLoading("Gathering Iterations...");
         Deft.Chain.sequence(promises,me).then({
-            success: function(rows) {
+            success: function(results) {
                 this._makeGrid(rows);
             },
             failure: function(msg) {
@@ -125,8 +128,15 @@ Ext.define("TSIterationSummary", {
     },
     
     _gatherIterationInformationForRow: function(iteration_name,row){
+        var me = this;
+        return Deft.Chain.sequence([
+            function() { return me._gatherInitialIterationInformationForRow(iteration_name, row); },
+            function() { return me._gatherStoriesInIterationForRow(iteration_name, row); }
+        ], this);
+    },
+    
+    _gatherInitialIterationInformationForRow: function(iteration_name,row) {
         var deferred = Ext.create('Deft.Deferred');
-        
         var config = {
             model: 'Iteration',
             filters: [
@@ -162,8 +172,40 @@ Ext.define("TSIterationSummary", {
         return deferred.promise;
     },
     
+    _gatherStoriesInIterationForRow: function( iteration_name, row ) {
+        var deferred = Ext.create('Deft.Deferred');
+        var config = {
+            model: 'UserStory',
+            filters: [
+                {property:'Iteration.Name',value:iteration_name}
+            ],
+            limit: 1,
+            pageSize: 1,
+            fetch: ['Name','ObjectID','PlanEstimate','AcceptedDate'],
+            context: {
+                projectScopeUp: false,
+                projectScopeDown: true,
+                project: row.get('_ref')
+            }
+        };
+        
+        this._loadWsapiRecords(config).then({
+            success: function(stories) {
+                Ext.Array.each(stories, function(story) {
+                    row.addStory(story);
+                });
+                deferred.resolve(row);
+            },
+            failure: function(msg) { deferred.reject(msg); },
+            scope: this
+        });
+        
+        return deferred.promise;
+    },
+    
     _loadProjects: function() {
         var programs = this.getSetting('showPrograms');
+        this.setLoading('Fetching Projects...');
         
         if ( Ext.isEmpty(programs) || programs == {} || programs == "{}") {
             var config = {

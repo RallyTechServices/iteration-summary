@@ -70,7 +70,7 @@ Ext.define('CA.technicalservices.ProjectTreePickerSettingsField',{
                 var setting = decodedValue[project.get('_ref')];
                 if ( setting && setting !== {} ) {
                     data.push({
-                        projectRef: project.get('_ref'), 
+                        _ref: project.get('_ref'), 
                         projectName: project.get('Name'),
                         Name: project.get('Name'),
                         ObjectID: project.get('ObjectID')
@@ -82,7 +82,7 @@ Ext.define('CA.technicalservices.ProjectTreePickerSettingsField',{
         }
 
         var custom_store = Ext.create('Ext.data.Store', {
-            fields: ['projectRef', 'projectName','Name', 'ObjectID'],
+            fields: ['_ref', 'projectName','Name', 'ObjectID'],
             data: data
         });
         
@@ -117,7 +117,7 @@ Ext.define('CA.technicalservices.ProjectTreePickerSettingsField',{
                     Ext.create('CA.technicalservices.ProjectTreePickerDialog',{
                         autoShow: true,
                         width: width,
-                        selectedRefs: _.pluck(data, 'projectRef'),
+                        selectedRefs: _.pluck(data, '_ref'),
                         listeners: {
                             scope: this,
                             itemschosen: function(items){
@@ -125,9 +125,9 @@ Ext.define('CA.technicalservices.ProjectTreePickerSettingsField',{
                                     store = this._grid.getStore();
 
                                 Ext.Array.each(items, function(item){
-                                    if (!store.findRecord('projectRef',item.get('_ref'))){
+                                    if (!store.findRecord('_ref',item.get('_ref'))){
                                         new_data.push({
-                                            projectRef: item.get('_ref'),
+                                            _ref: item.get('_ref'),
                                             projectName: item.get('Name'),
                                             Name: item.get('Name'),
                                             ObjectID: item.get('ObjectID')
@@ -161,7 +161,7 @@ Ext.define('CA.technicalservices.ProjectTreePickerSettingsField',{
         },
         {
             text: 'Program',
-            dataIndex: 'projectRef',
+            dataIndex: '_ref',
             flex: 1,
             editor: false,
             renderer: function(v, m, r){
@@ -190,10 +190,11 @@ Ext.define('CA.technicalservices.ProjectTreePickerSettingsField',{
         var store = this._grid.getStore();
 
         store.each(function(record) {
-            if (record.get('projectRef')) {
-                mappings[record.get('projectRef')] = {
+            if (record.get('_ref')) {
+                mappings[record.get('_ref')] = {
                     'Name': record.get('projectName') || "",
-                    'ObjectID': record.get('ObjectID') || ""
+                    'ObjectID': record.get('ObjectID') || "",
+                    '_ref': record.get('_ref') || ""
                 }
             }
         }, this);
