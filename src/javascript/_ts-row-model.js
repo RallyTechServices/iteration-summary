@@ -1,8 +1,10 @@
 Ext.define('TSRow',{
     extend: 'Ext.data.Model',
     fields: [
+        { name: '_ref', type:'string' },
         { name: 'ObjectID', type:'integer' },
         { name: 'Name', type:'string' },
+        { name: 'Program', type:'boolean', defaultValue: false},
         { name: 'Velocity', type: 'number', defaultValue: -1},
         { name: 'PlanEstimate', type: 'number'},
         { name: 'PlannedVelocity', type:'number'},

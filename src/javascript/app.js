@@ -7,6 +7,32 @@ Ext.define("TSIterationSummary", {
         {xtype:'container',itemId:'selector_box'},
         {xtype:'container',itemId:'display_box'}
     ],
+    
+//    Ext.create('CA.technicalservices.ProjectTreePickerDialog',{
+//        autoShow: true,
+//        title: 'Choose Project(s)',
+//        //selectedRefs: _.pluck(data, 'projectRef'),
+//        listeners: {
+//            scope: this,
+//            itemschosen: function(items){
+//                var new_data = [],
+//                    store = this._grid.getStore();
+//
+//                Ext.Array.each(items, function(item){
+//                    if (!store.findRecord('projectRef',item.get('_ref'))){
+//                        new_data.push({
+//                            projectRef: item.get('_ref'),
+//                            projectName: item.get('Name'),
+//                            Name: item.get('Name'),
+//                            groupName: null,
+//                            groupOrder: 0
+//                        });
+//                    }
+//                });
+//                this._grid.getStore().add(new_data);
+//            }
+//        }
+//    });
 
     integrationHeaders : {
         name : "TSIterationSummary"
@@ -15,13 +41,15 @@ Ext.define("TSIterationSummary", {
     launch: function() {
         var me = this;
         this.setLoading('Fetching Projects...');
-        this._getProjects().then({
+        this._loadProjects().then({
             success: function(projects) {
                 this.rows = Ext.Array.map(projects, function(project){
                     return Ext.create('TSRow', project.getData());
                 });
                 
-                this._addSelectors(this.down('#selector_box'));
+                if ( this.rows.length === 0 ) { return; }
+
+                this._addSelectors(this.down('#selector_box'), projects);
             },
             failure: function(msg) {
                 Ext.Msg.alert('',msg);
@@ -30,14 +58,29 @@ Ext.define("TSIterationSummary", {
         }).always(function(){ me.setLoading(false);});
     },
     
-    _addSelectors: function(container){
+    _addSelectors: function(container, projects){
+        var context = this.getContext();
+        if ( this.rows[0].get('_ref') != this.getContext().getProjectRef() ) {
+            context = {
+                project: this.rows[0].get('_ref')
+            }
+        }
+        
+        context.projectScopeDown = false;
+        context.projectScopeUp = false;
+        
         this.iteration_selector = container.add({ 
             xtype:'rallyiterationcombobox',
             fieldLabel: 'Iteration:',
             margin: 10,
             labelWidth: 45,
             allowClear: false,
-            
+            storeConfig: {
+                limit: Infinity,
+                context: context,
+                remoteFilter: false,
+                autoLoad: true
+            },
             listeners: {
                 scope: this,
                 change: this._updateData
@@ -46,8 +89,11 @@ Ext.define("TSIterationSummary", {
     },
     
     _updateData: function() {
-        var iteration = this.iteration_selector.getRecord().get('Name');
         this.down('#display_box').removeAll();
+        if ( Ext.isEmpty(this.iteration_selector) ) {
+            return;
+        }
+        var iteration = this.iteration_selector.getRecord().get('Name');
         
         this._gatherIterationInformation(iteration,this.rows);
     },
@@ -89,14 +135,24 @@ Ext.define("TSIterationSummary", {
             ],
             limit: 1,
             pageSize: 1,
-            fetch: ['Name','ObjectID','PlanEstimate','PlannedVelocity']
+            fetch: ['Name','ObjectID','PlanEstimate','PlannedVelocity'],
+            context: {
+                projectScopeUp: false,
+                projectScopeDown: false,
+                project: row.get('_ref')
+            }
         };
         
         this._loadWsapiRecords(config).then({
             success: function(iterations) {
                 var iteration = iterations[0];
-                row.set('PlanEstimate',iteration.get('PlanEstimate'));
-                row.set('PlannedVelocity',iteration.get('PlannedVelocity'));
+                if ( Ext.isEmpty(iteration) ) {
+                    row.set('PlanEstimate', 'N/A');
+                    row.set('PlannedVelocity', 'N/A');
+                } else {
+                    row.set('PlanEstimate',iteration.get('PlanEstimate'));
+                    row.set('PlannedVelocity',iteration.get('PlannedVelocity'));
+                }
                 deferred.resolve(row);
             },
             failure: function(msg) { deferred.reject(msg); },
@@ -106,14 +162,56 @@ Ext.define("TSIterationSummary", {
         return deferred.promise;
     },
     
-    _getProjects: function() {
-        var config = {
-            model:'Project',
-            filters: [{property:'Parent',value: this.getContext().getProjectRef()}],
-            fetch:['Name','Parent','ObjectID']
-        };
+    _loadProjects: function() {
+        var programs = this.getSetting('showPrograms');
         
-        return this._loadWsapiRecords(config);
+        if ( Ext.isEmpty(programs) || programs == {} || programs == "{}") {
+            var config = {
+                model:'Project',
+                filters: [{property:'Parent',value: this.getContext().getProjectRef()}],
+                fetch:['Name','Parent','ObjectID']
+            };
+        
+            return this._loadWsapiRecords(config);
+        } 
+        
+        return this._loadProgramsAndProjects(programs);
+    },
+    
+    _loadProgramsAndProjects: function(programs) {
+        var me = this,
+            deferred = Ext.create('Deft.Deferred');
+        
+        if ( Ext.isString(programs) ) { programs = Ext.JSON.decode(programs); }
+        
+        console.log('programs', programs);
+        var promises = [];
+        Ext.Object.each(programs, function(ref, program){
+            promises.push(function() {
+                program.Program = true;
+                return Ext.create('TSRow', program);
+            });
+            
+            var config = {
+                model:'Project',
+                filters: [{property:'Parent',value: ref}],
+                fetch:['Name','Parent','ObjectID']
+            };
+            promises.push(function() {
+                return me._loadWsapiRecords(config);
+            });
+        });
+        
+        Deft.Chain.sequence(promises,this).then({
+            success: function(results) {
+                deferred.resolve(Ext.Array.flatten(results));
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            }
+        });
+        
+        return deferred;
     },
       
     _loadWsapiRecords: function(config){
@@ -154,7 +252,14 @@ Ext.define("TSIterationSummary", {
             dataIndex:'Name', text:'Program/Team', draggable: false, hideable: false,
             draggable: false, 
             hideable: false,
-            sortable: false
+            sortable: false,
+            renderer: function(value,meta,record) {
+                var prefix = "";
+                if ( !record.get('Program') ) {
+                    prefix = "&nbsp;&nbsp;&nbsp;&nbsp;";
+                }
+                return prefix + value;
+            }
         },
         {
             text: 'Velocity',
@@ -241,6 +346,17 @@ Ext.define("TSIterationSummary", {
             draggable: false, 
             hideable: false,
             sortable: false
+        }];
+    },
+    
+    getSettingsFields: function() {
+        var me = this;
+        
+        return [{
+            name: 'showPrograms',
+            xtype:'tsprojectsettingsfield',
+            fieldLabel: ' ',
+            readyEvent: 'ready'
         }];
     },
     

@@ -3,13 +3,13 @@
 <head>
     <title>TS Iteration Summary</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Sep 13 2016 20:06:59 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Sep 15 2016 20:55:47 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Sep 13 2016 20:06:59 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Thu Sep 15 2016 20:55:47 GMT-0700 (PDT)";
         var STORY    = "US676";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 5149360273;
+        var CHECKSUM = 32580968171;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -210,11 +210,745 @@ Ext.define('Rally.technicalservices.Logger',{
 
 });
 
+Ext.define('CA.technicalservices.ProjectTreePickerDialog', {
+    extend: 'Rally.ui.dialog.Dialog',
+    alias: 'widget.projecttreepickerdialog',
+
+    minWidth: 400,
+    width: 400,
+    minHeight: 300,
+    height: 300,
+    
+    layout: 'fit',
+    closable: true,
+    draggable: true,
+
+    config: {
+        /**
+         * @cfg {String}
+         * Title to give to the dialog
+         */
+        title: 'Choose Project(s)',
+
+        /**
+         * @cfg {Boolean}
+         * Allow multiple selection or not
+         */
+        multiple: true,
+
+        /**
+         * @cfg {Object}
+         * An {Ext.data.Store} config object used when building the grid
+         * Handy when you need to limit the selection with store filters
+         */
+        storeConfig: {
+            context: {
+                project: null
+            },
+            sorters: [
+                {
+                    property: 'FormattedID',
+                    direction: 'DESC'
+                }
+            ]
+        },
+
+        /**
+         * @cfg {Ext.grid.Column}
+         * List of columns that will be used in the chooser
+         */
+        columns: [
+            'Name'
+        ],
+
+        /**
+         * @cfg {String}
+         * Text to be displayed on the button when selection is complete
+         */
+        selectionButtonText: 'Done',
+
+        /**
+         * @cfg {Object}
+         * The grid configuration to be used when creative the grid of items in the dialog
+         */
+        gridConfig: {},
+
+        /**
+         * @cfg {String}|{String[]}
+         * The ref(s) of items which should be selected when the chooser loads
+         */
+        selectedRecords: undefined,
+
+        /**
+         * @cfg {Array}
+         * The records to select when the chooser loads
+         */
+        initialSelectedRecords: undefined,
+
+        /**
+         * @cfg showRadioButtons {Boolean}
+         */
+        showRadioButtons: true,
+        
+        /**
+         * @cfg showSearchBox {Boolean}
+         * 
+         * [ Experimental.  Search box might not work ]
+         */
+        showSearchBox: false
+    },
+
+    constructor: function(config) {
+        this.mergeConfig(config);
+
+        this.callParent([this.config]);
+    },
+
+    selectionCache: [],
+
+    initComponent: function() {
+        this.callParent(arguments);
+
+        this.addEvents(
+            /**
+             * @event artifactchosen
+             * Fires when user clicks done after choosing an artifact
+             * @param {Rally.ui.dialog.ArtifactChooserDialog} source the dialog
+             * @param {Rally.data.wsapi.Model}| {Rally.data.wsapi.Model[]} selection selected record or an array of selected records if multiple is true
+             */
+            'itemschosen'
+        );
+
+        this.addCls(['chooserDialog', 'chooser-dialog']);
+    },
+
+    destroy: function() {
+        //      this._destroyTooltip();
+        this.callParent(arguments);
+    },
+
+    beforeRender: function() {
+        this.callParent(arguments);
+
+        this.addDocked({
+            xtype: 'toolbar',
+            dock: 'bottom',
+            padding: '0 0 10 0',
+            layout: {
+                type: 'hbox',
+                pack: 'center'
+            },
+            ui: 'footer',
+            items: [
+                {
+                    xtype: 'rallybutton',
+                    itemId: 'doneButton',
+                    text: this.selectionButtonText,
+                    cls: 'primary rly-small',
+                    scope: this,
+                    disabled: true,
+                    userAction: 'clicked done in dialog',
+                    handler: function() {
+                        this.fireEvent('itemschosen', this.getSelectedRecords());
+                        this.close();
+                    }
+                },
+                {
+                    xtype: 'rallybutton',
+                    text: 'Cancel',
+                    cls: 'secondary rly-small',
+                    handler: this.close,
+                    scope: this,
+                    ui: 'link'
+                }
+            ]
+        });
+
+        if (this.introText) {
+            this.addDocked({
+                xtype: 'component',
+                componentCls: 'intro-panel',
+                html: this.introText
+            });
+        }
+
+        if ( this.showSearchBox ) {
+            this.addDocked({
+                xtype: 'toolbar',
+                itemId: 'searchBar',
+                dock: 'top',
+                border: false,
+                padding: '0 0 10px 0',
+                items: this.getSearchBarItems()
+            });
+        }
+
+        this.buildGrid();
+
+        this.selectionCache = this.getInitialSelectedRecords() || [];
+    },
+
+    /**
+     * Get the records currently selected in the dialog
+     * {Rally.data.Model}|{Rally.data.Model[]}
+     */
+    getSelectedRecords: function() {
+        return this.multiple ? this.selectionCache : this.selectionCache[0];
+    },
+
+    getSearchBarItems: function() {
+        
+        return [
+            {
+                xtype: 'triggerfield',
+                cls: 'rui-triggerfield chooser-search-terms',
+                emptyText: 'Search Keyword or ID',
+                enableKeyEvents: true,
+                flex: 1,
+                itemId: 'searchTerms',
+                listeners: {
+                    keyup: function (textField, event) {
+                        if (event.getKey() === Ext.EventObject.ENTER) {
+                            this._search();
+                        }
+                    },
+                    afterrender: function (field) {
+                        field.focus();
+                    },
+                    scope: this
+                },
+                triggerBaseCls: 'icon-search chooser-search-icon'
+            }
+        ];
+    },
+    getStoreFilters: function() {
+        return [];
+    },
+
+    buildGrid: function() {
+        if (this.grid) {
+            this.grid.destroy();
+        }
+        var me = this;
+
+        this.setLoading('Fetching Project Tree...');
+        Ext.create('Rally.data.wsapi.ProjectTreeStoreBuilder').build({
+            models: ['project'],
+            autoLoad: true,
+            enableHierarchy: true,
+            filters: [{
+                property: 'Parent',
+                value: ""
+            }]
+        }).then({
+            scope: this,
+            success: function(store) {
+
+                var mode = this.multiple ? 'MULTI' : 'SINGLE';
+
+                var checkbox_model = Ext.create('Rally.ui.selection.CheckboxModel', {
+                    mode: mode,
+                    enableKeyNav: false,
+                    allowDeselect: true
+                });
+
+                this.grid = this.add({
+                    xtype: 'rallytreegrid',
+                    treeColumnDataIndex: 'Name',
+                    treeColumnHeader: 'Name',
+                    viewConfig: {
+                        cls: 'grid-view-bulk-edit'
+                    },
+                    enableRanking: false,
+                    enableEditing: false,
+                    enableBulkEdit: false,
+                    shouldShowRowActionsColumn: false,
+
+                    selModel: checkbox_model,
+                    _defaultTreeColumnRenderer: function (value, metaData, record, rowIdx, colIdx, store) {
+                        store = store.treeStore || store;
+                        return Rally.ui.renderer.RendererFactory.getRenderTemplate(store.model.getField('Name')).apply(record.data);
+                    },
+                    columnCfgs: [],
+                    store: store
+                });
+
+                this.mon(this.grid, {
+                    beforeselect: this._onGridSelect,
+                    beforedeselect: this._onGridDeselect,
+                    load: this._onGridLoad,
+                    scope: this
+                });
+                this.add(this.grid);
+                this._onGridReady();
+            }
+        }).always(function() { me.setLoading(false);} );
+    },
+
+    _enableDoneButton: function() {
+        this.down('#doneButton').setDisabled(this.selectionCache.length ? false : true);
+    },
+
+    _findRecordInSelectionCache: function(record){
+        return _.findIndex(this.selectionCache, function(cachedRecord) {
+            return cachedRecord.get('_ref') === record.get('_ref');
+        });
+    },
+
+    _onGridSelect: function(selectionModel, record) {
+        var index = this._findRecordInSelectionCache(record);
+
+        if (index === -1) {
+            if (!this.multiple) {
+                this.selectionCache = [];
+            }
+            this.selectionCache.push(record);
+        }
+
+        this._enableDoneButton();
+    },
+
+    _onGridDeselect: function(selectionModel, record) {
+        var index = this._findRecordInSelectionCache(record);
+        if (index !== -1) {
+            this.selectionCache.splice(index, 1);
+        }
+        this._enableDoneButton();
+    },
+
+    _onGridReady: function() {
+        if (!this.grid.rendered) {
+            this.mon(this.grid, 'afterrender', this._onGridReady, this, {single: true});
+            return;
+        }
+
+        if (this.grid.getStore().isLoading()) {
+            this.mon(this.grid, 'load', this._onGridReady, this, {single: true});
+            return;
+        }
+
+        this._onGridLoad();
+        this.center();
+    },
+    _onGridLoad: function() {
+        var store = this.grid.store;
+        var records = [];
+        Ext.Array.each(this.selectionCache, function(record) {
+            var foundNode = store.getRootNode().findChild('_ref', record.get('_ref'),true);
+
+            if (foundNode) {
+                records.push(foundNode);
+            }
+        });
+        if (records.length) {
+            this.grid.getSelectionModel().select(records);
+        }
+    },
+    _search: function() {
+        var terms = this._getSearchTerms();
+        var store = this.grid.getStore();
+        //Filter functions call store load so we don't need to refresh the selections becuaes the
+        //onGridLoad function will
+        if (terms) {
+            store.filter([
+                Ext.create('Rally.data.wsapi.Filter',{
+                    property: 'Name',
+                    operator: 'contains',
+                    value: terms
+                })
+            ]);
+        } else {
+            store.clearFilter();
+        }
+
+    },
+    _getSearchTerms: function() {
+        var textBox = this.down('#searchTerms');
+        return textBox && textBox.getValue();
+    }
+});
+
+Ext.override(Rally.data.wsapi.ParentChildMapper, {
+    constructor: function() {
+        this.parentChildTypeMap = {
+            project: [{
+                typePath: 'project', collectionName: 'Children', parentField: 'Parent'
+            }],
+            hierarchicalrequirement: [
+                {typePath: 'defect', collectionName: 'Defects', parentField: 'Requirement'},
+                {typePath: 'task', collectionName: 'Tasks', parentField: 'WorkProduct'},
+                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'WorkProduct'},
+                {typePath: 'hierarchicalrequirement', collectionName: 'Children', parentField: 'Parent'}
+            ],
+            defect: [
+                {typePath: 'task', collectionName: 'Tasks', parentField: 'WorkProduct'},
+                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'WorkProduct'}
+            ],
+            defectsuite: [
+                {typePath: 'defect', collectionName: 'Defects', parentField: 'DefectSuites'},
+                {typePath: 'task', collectionName: 'Tasks', parentField: 'WorkProduct'},
+                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'WorkProduct'}
+            ],
+            testset: [
+                {typePath: 'task', collectionName: 'Tasks', parentField: 'WorkProduct'},
+                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'TestSets'}
+            ]
+        };
+    }
+});
+
+
+Ext.define('Rally.data.wsapi.ProjectTreeStore', {
+
+    extend: 'Rally.data.wsapi.TreeStore',
+    alias: 'store.rallyprojectwsapitreestore',
+    
+    /**
+     * The type definition typePaths to render as root items (required)
+     * @cfg {String[]} parentTypes
+     */
+    parentTypes: ['project'],
+    
+    /**
+     * @property
+     * @private
+     */
+    childLevelSorters: [{
+        property: 'Name',
+        direction: 'ASC'
+    }],
+        
+    getParentFieldNamesByChildType: function(childType, parentType) {
+        return ['Parent'];
+    },
+
+    _getChildNodeFilters: function(node) {
+        var parentType = node.self.typePath,
+            childTypes = this._getChildTypePaths([parentType]),
+            parentFieldNames = this._getParentFieldNames(childTypes, parentType);
+
+        var filter = [];
+        if (parentFieldNames.length) {
+            filter =  [
+                Rally.data.wsapi.Filter.or(_.map(parentFieldNames, function(parentFieldName) {
+                    return {
+                        property: parentFieldName,
+                        operator: '=',
+                        value: node.get('_ref')
+                    };
+                }))
+            ];
+        }
+
+        return filter;
+    },
+
+    filter: function(filters) {
+        console.log('--');
+        this.fireEvent('beforefilter', this);
+        //We need to clear the filters to remove the Parent filter
+        this.filters.clear();
+        this.filters.addAll(filters);
+        this._resetCurrentPage();
+        this.load();
+    },
+    
+    load: function(options) {
+        this.recordLoadBegin({description: 'tree store load', component: this.requester});
+
+        this._hasErrors = false;
+
+        this.on('beforeload', function(store, operation) {
+            delete operation.id;
+        }, this, { single: true });
+
+        options = this._configureLoad(options);
+        options.originalCallback = options.callback;
+        var deferred = Ext.create('Deft.Deferred'),
+            me = this;
+
+        options.callback = function (records, operation, success) {
+            me.dataLoaded = true;
+
+            if (me._pageIsEmpty(operation)) {
+                me._reloadEmptyPage(options).then({
+                    success: function (records) {
+                        // this gives a maximum callstack exceeded error.  don't know why
+                        //me._resolveLoadingRecords(deferred, records, options, operation, success);
+                    },
+                    failure: function() {
+                        me._rejectLoadingRecord(deferred, options, operation);
+                    }
+                });
+            } else {
+                //me._resolveLoadingRecords(deferred, records, options, operation, success);
+            }
+        };
+
+        if (this._isViewReady()) {
+            this._beforeInitialLoad(options);
+        }
+
+        this.callParent([options]);
+
+        return deferred.promise;
+    },
+
+    clearFilter: function(suppressEvent) {
+        this._resetCurrentPage();
+        this.filters.clear();
+        //We need to add the parent filter back in
+        this.filters.addAll(Ext.create('Rally.data.wsapi.Filter',{
+            property: 'Parent',
+            value: ''
+        }));
+
+        if (!suppressEvent) {
+            this.load();
+        }
+    }
+});
+
+Ext.define('Rally.data.wsapi.ProjectTreeStoreBuilder', {
+    extend: 'Rally.data.wsapi.TreeStoreBuilder',
+
+    build: function(config) {
+        config = _.clone(config || {});
+        config.storeType = 'Rally.data.wsapi.ProjectTreeStore';
+
+        return this.loadModels(config).then({
+            success: function(models) {
+                models = _.values(models);
+                return this._buildStoreWithModels(models, config);
+            },
+            scope: this
+        });
+    },
+
+    _useCompositeArtifacts: function (models, config) {
+        return false;
+    }
+});
+Ext.define('CA.technicalservices.ProjectTreePickerSettingsField',{
+    extend: 'Ext.form.field.Base',
+    alias: 'widget.tsprojectsettingsfield',
+    fieldSubTpl: '<div id="{id}" class="settings-grid"></div>',
+    width: '100%',
+    cls: 'column-settings',
+
+    store: undefined,
+    labelAlign: 'top',
+    
+    onDestroy: function() {
+        if (this._grid) {
+            this._grid.destroy();
+            delete this._grid;
+        }
+        this.callParent(arguments);
+    },
+    
+    initComponent: function(){
+
+        this.callParent();
+        this.addEvents('ready');
+
+        this.setLoading('loading...');
+        var store = Ext.create('Rally.data.wsapi.Store', {
+            model: 'Project',
+            fetch: ['Name','ObjectID'],
+            //filters: [{property:'ObjectID', value: -1 }],
+            pageSize: 2000,
+            limit: 'Infinity'
+        });
+        store.load({
+            scope: this,
+            callback: this._buildProjectGrid
+        });
+
+    },
+
+    onRender: function() {
+        this.callParent(arguments);
+        this.setLoading('Loading projects...');
+    },
+        
+    _buildProjectGrid: function(records, operation, success){
+        this.setLoading(false);
+        var container = Ext.create('Ext.container.Container',{
+            layout: { type:'hbox' },
+            renderTo: this.inputEl,
+            minHeight: 50,
+            minWidth: 50
+        });
+        
+        var decodedValue = {};
+        
+        if (this.initialConfig && this.initialConfig.value && !_.isEmpty(this.initialConfig.value)){
+            if (!Ext.isObject(this.initialConfig.value)){
+                decodedValue = Ext.JSON.decode(this.initialConfig.value);
+            } else {
+                decodedValue = this.initialConfig.value;
+            }
+        }
+       
+        var data = [],
+            empty_text = "No selections";
+
+        console.log('initial config', this._value, this.initialConfig, decodedValue);
+            
+        if (success && decodedValue !== {} ) {
+            Ext.Array.each(records, function(project){
+                var setting = decodedValue[project.get('_ref')];
+                if ( setting && setting !== {} ) {
+                    data.push({
+                        projectRef: project.get('_ref'), 
+                        projectName: project.get('Name'),
+                        Name: project.get('Name'),
+                        ObjectID: project.get('ObjectID')
+                    });
+                }
+            });
+        } else {
+            empty_text = "Error(s) fetching Project data: <br/>" + operation.error.errors.join('<br/>');
+        }
+
+        var custom_store = Ext.create('Ext.data.Store', {
+            fields: ['projectRef', 'projectName','Name', 'ObjectID'],
+            data: data
+        });
+        
+        var gridWidth = Math.min(this.inputEl.getWidth(true)-100, 500);
+        this.inputEl.set
+        this._grid = container.add(  {
+            xtype:'rallygrid',
+            autoWidth: true,
+            columnCfgs: this._getColumnCfgs(),
+            showRowActionsColumn:false,
+            showPagingToolbar: false,
+            store: custom_store,
+            height: 150,
+            width: gridWidth,
+            emptyText: empty_text,
+            editingConfig: {
+                publishMessages: false
+            }
+        });
+
+        var width = Math.min(this.inputEl.getWidth(true)-20, 600);
+        
+        //Ext.create('Rally.ui.Button',{
+        container.add({
+            xtype: 'rallybutton',
+            text: 'Select Programs',
+            margin: '0 0 0 10',
+            listeners: {
+                scope: this,
+                click: function(){
+
+                    Ext.create('CA.technicalservices.ProjectTreePickerDialog',{
+                        autoShow: true,
+                        width: width,
+                        selectedRefs: _.pluck(data, 'projectRef'),
+                        listeners: {
+                            scope: this,
+                            itemschosen: function(items){
+                                var new_data = [],
+                                    store = this._grid.getStore();
+
+                                Ext.Array.each(items, function(item){
+                                    if (!store.findRecord('projectRef',item.get('_ref'))){
+                                        new_data.push({
+                                            projectRef: item.get('_ref'),
+                                            projectName: item.get('Name'),
+                                            Name: item.get('Name'),
+                                            ObjectID: item.get('ObjectID')
+                                        });
+                                    }
+                                });
+                                this._grid.getStore().add(new_data);
+                            }
+                        }
+                    });
+                }
+            }
+        });
+
+       this.fireEvent('ready', true);
+    },
+    _removeProject: function(){
+        this.grid.getStore().remove(this.record);
+    },
+    _getColumnCfgs: function() {
+        var me = this;
+
+        var columns = [{
+            xtype: 'rallyrowactioncolumn',
+            scope: this,
+            rowActionsFn: function(record){
+                return  [
+                    {text: 'Remove', record: record, handler: me._removeProject, grid: me._grid }
+                ];
+            }
+        },
+        {
+            text: 'Program',
+            dataIndex: 'projectRef',
+            flex: 1,
+            editor: false,
+            renderer: function(v, m, r){
+                return r.get('projectName');
+            },
+            getSortParam: function(v,m,r){
+                return 'projectName';
+            }
+        }];
+        return columns;
+    },
+    /**
+     * When a form asks for the data this field represents,
+     * give it the name of this field and the ref of the selected project (or an empty string).
+     * Used when persisting the value of this field.
+     * @return {Object}
+     */
+    getSubmitData: function() {
+        var data = {};
+        data[this.name] = Ext.JSON.encode(this._buildSettingValue());
+        return data;
+    },
+    
+    _buildSettingValue: function() {
+        var mappings = {};
+        var store = this._grid.getStore();
+
+        store.each(function(record) {
+            if (record.get('projectRef')) {
+                mappings[record.get('projectRef')] = {
+                    'Name': record.get('projectName') || "",
+                    'ObjectID': record.get('ObjectID') || ""
+                }
+            }
+        }, this);
+        return mappings;
+    },
+
+    getErrors: function() {
+        var errors = [];
+        //Add validation here
+        return errors;
+    },
+    setValue: function(value) {
+        console.log('setValue', value);
+        this.callParent(arguments);
+        this._value = value;
+    }
+});
 Ext.define('TSRow',{
     extend: 'Ext.data.Model',
     fields: [
+        { name: '_ref', type:'string' },
         { name: 'ObjectID', type:'integer' },
         { name: 'Name', type:'string' },
+        { name: 'Program', type:'boolean', defaultValue: false},
         { name: 'Velocity', type: 'number', defaultValue: -1},
         { name: 'PlanEstimate', type: 'number'},
         { name: 'PlannedVelocity', type:'number'},
@@ -239,6 +973,32 @@ Ext.define("TSIterationSummary", {
         {xtype:'container',itemId:'selector_box'},
         {xtype:'container',itemId:'display_box'}
     ],
+    
+//    Ext.create('CA.technicalservices.ProjectTreePickerDialog',{
+//        autoShow: true,
+//        title: 'Choose Project(s)',
+//        //selectedRefs: _.pluck(data, 'projectRef'),
+//        listeners: {
+//            scope: this,
+//            itemschosen: function(items){
+//                var new_data = [],
+//                    store = this._grid.getStore();
+//
+//                Ext.Array.each(items, function(item){
+//                    if (!store.findRecord('projectRef',item.get('_ref'))){
+//                        new_data.push({
+//                            projectRef: item.get('_ref'),
+//                            projectName: item.get('Name'),
+//                            Name: item.get('Name'),
+//                            groupName: null,
+//                            groupOrder: 0
+//                        });
+//                    }
+//                });
+//                this._grid.getStore().add(new_data);
+//            }
+//        }
+//    });
 
     integrationHeaders : {
         name : "TSIterationSummary"
@@ -247,13 +1007,15 @@ Ext.define("TSIterationSummary", {
     launch: function() {
         var me = this;
         this.setLoading('Fetching Projects...');
-        this._getProjects().then({
+        this._loadProjects().then({
             success: function(projects) {
                 this.rows = Ext.Array.map(projects, function(project){
                     return Ext.create('TSRow', project.getData());
                 });
                 
-                this._addSelectors(this.down('#selector_box'));
+                if ( this.rows.length === 0 ) { return; }
+
+                this._addSelectors(this.down('#selector_box'), projects);
             },
             failure: function(msg) {
                 Ext.Msg.alert('',msg);
@@ -262,14 +1024,29 @@ Ext.define("TSIterationSummary", {
         }).always(function(){ me.setLoading(false);});
     },
     
-    _addSelectors: function(container){
+    _addSelectors: function(container, projects){
+        var context = this.getContext();
+        if ( this.rows[0].get('_ref') != this.getContext().getProjectRef() ) {
+            context = {
+                project: this.rows[0].get('_ref')
+            }
+        }
+        
+        context.projectScopeDown = false;
+        context.projectScopeUp = false;
+        
         this.iteration_selector = container.add({ 
             xtype:'rallyiterationcombobox',
             fieldLabel: 'Iteration:',
             margin: 10,
             labelWidth: 45,
             allowClear: false,
-            
+            storeConfig: {
+                limit: Infinity,
+                context: context,
+                remoteFilter: false,
+                autoLoad: true
+            },
             listeners: {
                 scope: this,
                 change: this._updateData
@@ -278,8 +1055,11 @@ Ext.define("TSIterationSummary", {
     },
     
     _updateData: function() {
-        var iteration = this.iteration_selector.getRecord().get('Name');
         this.down('#display_box').removeAll();
+        if ( Ext.isEmpty(this.iteration_selector) ) {
+            return;
+        }
+        var iteration = this.iteration_selector.getRecord().get('Name');
         
         this._gatherIterationInformation(iteration,this.rows);
     },
@@ -321,14 +1101,24 @@ Ext.define("TSIterationSummary", {
             ],
             limit: 1,
             pageSize: 1,
-            fetch: ['Name','ObjectID','PlanEstimate','PlannedVelocity']
+            fetch: ['Name','ObjectID','PlanEstimate','PlannedVelocity'],
+            context: {
+                projectScopeUp: false,
+                projectScopeDown: false,
+                project: row.get('_ref')
+            }
         };
         
         this._loadWsapiRecords(config).then({
             success: function(iterations) {
                 var iteration = iterations[0];
-                row.set('PlanEstimate',iteration.get('PlanEstimate'));
-                row.set('PlannedVelocity',iteration.get('PlannedVelocity'));
+                if ( Ext.isEmpty(iteration) ) {
+                    row.set('PlanEstimate', 'N/A');
+                    row.set('PlannedVelocity', 'N/A');
+                } else {
+                    row.set('PlanEstimate',iteration.get('PlanEstimate'));
+                    row.set('PlannedVelocity',iteration.get('PlannedVelocity'));
+                }
                 deferred.resolve(row);
             },
             failure: function(msg) { deferred.reject(msg); },
@@ -338,14 +1128,56 @@ Ext.define("TSIterationSummary", {
         return deferred.promise;
     },
     
-    _getProjects: function() {
-        var config = {
-            model:'Project',
-            filters: [{property:'Parent',value: this.getContext().getProjectRef()}],
-            fetch:['Name','Parent','ObjectID']
-        };
+    _loadProjects: function() {
+        var programs = this.getSetting('showPrograms');
         
-        return this._loadWsapiRecords(config);
+        if ( Ext.isEmpty(programs) || programs == {} || programs == "{}") {
+            var config = {
+                model:'Project',
+                filters: [{property:'Parent',value: this.getContext().getProjectRef()}],
+                fetch:['Name','Parent','ObjectID']
+            };
+        
+            return this._loadWsapiRecords(config);
+        } 
+        
+        return this._loadProgramsAndProjects(programs);
+    },
+    
+    _loadProgramsAndProjects: function(programs) {
+        var me = this,
+            deferred = Ext.create('Deft.Deferred');
+        
+        if ( Ext.isString(programs) ) { programs = Ext.JSON.decode(programs); }
+        
+        console.log('programs', programs);
+        var promises = [];
+        Ext.Object.each(programs, function(ref, program){
+            promises.push(function() {
+                program.Program = true;
+                return Ext.create('TSRow', program);
+            });
+            
+            var config = {
+                model:'Project',
+                filters: [{property:'Parent',value: ref}],
+                fetch:['Name','Parent','ObjectID']
+            };
+            promises.push(function() {
+                return me._loadWsapiRecords(config);
+            });
+        });
+        
+        Deft.Chain.sequence(promises,this).then({
+            success: function(results) {
+                deferred.resolve(Ext.Array.flatten(results));
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            }
+        });
+        
+        return deferred;
     },
       
     _loadWsapiRecords: function(config){
@@ -386,7 +1218,14 @@ Ext.define("TSIterationSummary", {
             dataIndex:'Name', text:'Program/Team', draggable: false, hideable: false,
             draggable: false, 
             hideable: false,
-            sortable: false
+            sortable: false,
+            renderer: function(value,meta,record) {
+                var prefix = "";
+                if ( !record.get('Program') ) {
+                    prefix = "&nbsp;&nbsp;&nbsp;&nbsp;";
+                }
+                return prefix + value;
+            }
         },
         {
             text: 'Velocity',
@@ -473,6 +1312,17 @@ Ext.define("TSIterationSummary", {
             draggable: false, 
             hideable: false,
             sortable: false
+        }];
+    },
+    
+    getSettingsFields: function() {
+        var me = this;
+        
+        return [{
+            name: 'showPrograms',
+            xtype:'tsprojectsettingsfield',
+            fieldLabel: ' ',
+            readyEvent: 'ready'
         }];
     },
     
