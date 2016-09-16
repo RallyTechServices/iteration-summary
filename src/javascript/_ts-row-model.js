@@ -5,14 +5,14 @@ Ext.define('TSRow',{
         { name: 'ObjectID', type:'integer' },
         { name: 'Name', type:'string' },
         { name: 'Program', type:'boolean', defaultValue: false},
-        { name: 'Velocity', type: 'number', defaultValue: -1},
+        { name: 'Velocity', type: 'number', defaultValue: 0},
         { name: 'PlanEstimate', type: 'number'},
         { name: 'PlannedVelocity', type:'number'},
-        { name: 'TotalCount', type: 'number', defaultValue: -1},
-        { name: 'AcceptedCount', type: 'number', defaultValue: -1},
+        { name: 'TotalCount', type: 'number', defaultValue: 0},
+        { name: 'AcceptedCount', type: 'number', defaultValue: 0},
         { name: 'CompletedCount', type:'number', defaultValue: -1},
-        { name: 'TotalSize', type: 'number', defaultValue: -1},
-        { name: 'AcceptedSize', type: 'number', defaultValue: -1},
+        { name: 'TotalSize', type: 'number', defaultValue: 0},
+        { name: 'AcceptedSize', type: 'number', defaultValue: 0},
         { name: 'CompletedSize', type:'number', defaultValue: -1},
         { name: 'SpillInCount', type: 'number', defaultValue: -1},
         { name: 'SpillOutCount', type: 'number', defaultValue: -1},
@@ -38,5 +38,18 @@ Ext.define('TSRow',{
     
     addToField: function(fieldname, delta) {
         return this.set(fieldname, this.get(fieldname) + delta);
+    },
+    
+    resetToBase: function() {
+        var changeable_fields = ['Velocity','PlannedVelocity',
+            'TotalCount','AcceptedCount','CompletedCount',
+            'TotalSize','AcceptedSize','CompletedSize',
+            'SpillInCount','SpillOutCount','SpillInSize', 'SpillOutSize'];
+        
+        this.set('Stories',[]);
+        
+        Ext.Array.each(changeable_fields, function(field_name) {
+            this.set(field_name,0);
+        },this);
     }
 });

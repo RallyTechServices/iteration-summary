@@ -95,6 +95,10 @@ Ext.define("TSIterationSummary", {
         if ( Ext.isEmpty(this.iteration_selector) ) {
             return;
         }
+        Ext.Array.each(this.rows, function(row) {
+            row.resetToBase();
+        });
+        
         var iteration = this.iteration_selector.getRecord().get('Name');
         
         this._gatherIterationInformation(iteration,this.rows);
