@@ -313,13 +313,13 @@ Ext.define("TSIterationSummary", {
             
         },
         {
-            text: 'Capacity Planning',
+            text: 'Story Acceptance',
             columns: [{ 
                 text: 'Story Count',
                 columns: [
-                    { dataIndex: 'TotalCount', text: 'Total', csvText: 'Total Count', draggable: false, hideable: false},
-                    { dataIndex: 'AcceptedCount', text:'Accepted', csvText: 'Accepted Count', draggable: false, hideable: false},
-                    { dataIndex: 'CompletedCount', text: 'Completed', csvText: 'Completed Count', draggable: false, hideable: false}
+                    { dataIndex: 'TotalCount', text: 'Total Planned', csvText: 'Total Count', draggable: false, hideable: false},
+                    { dataIndex: 'CompletedCount', text: 'Completed State', csvText: 'Completed Count', draggable: false, hideable: false},
+                    { dataIndex: 'AcceptedCount', text:'Accepted State', csvText: 'Accepted Count', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,
@@ -328,9 +328,9 @@ Ext.define("TSIterationSummary", {
             { 
                 text: 'Story Points',
                 columns: [
-                    { dataIndex: 'TotalSize', text:'Total', csvText:'Total Size', draggable: false, hideable: false},
-                    { dataIndex: 'AcceptedSize', text: 'Accepted', csvText: 'Accepted Size', draggable: false, hideable: false},
-                    { dataIndex: 'CompletedSize', text: 'Completed', csvText: 'Completed Size', draggable: false, hideable: false}
+                    { dataIndex: 'TotalSize', text:'Total Planned', csvText:'Total Size', draggable: false, hideable: false},
+                    { dataIndex: 'CompletedSize', text: 'Completed State', csvText: 'Completed Size', draggable: false, hideable: false},
+                    { dataIndex: 'AcceptedSize', text: 'Accepted State', csvText: 'Accepted Size', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,

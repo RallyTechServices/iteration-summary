@@ -3,13 +3,13 @@
 <head>
     <title>TS Iteration Summary</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Sun Sep 18 2016 14:15:59 GMT-0700 (PDT) -->
+    <!--  Build Date: Sun Sep 18 2016 14:26:05 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sun Sep 18 2016 14:15:59 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Sun Sep 18 2016 14:26:05 GMT-0700 (PDT)";
         var STORY    = "US676";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 36282152227;
+        var CHECKSUM = 36374280783;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -1319,13 +1319,13 @@ Ext.define("TSIterationSummary", {
             
         },
         {
-            text: 'Capacity Planning',
+            text: 'Story Acceptance',
             columns: [{ 
                 text: 'Story Count',
                 columns: [
-                    { dataIndex: 'TotalCount', text: 'Total', csvText: 'Total Count', draggable: false, hideable: false},
-                    { dataIndex: 'AcceptedCount', text:'Accepted', csvText: 'Accepted Count', draggable: false, hideable: false},
-                    { dataIndex: 'CompletedCount', text: 'Completed', csvText: 'Completed Count', draggable: false, hideable: false}
+                    { dataIndex: 'TotalCount', text: 'Total Planned', csvText: 'Total Count', draggable: false, hideable: false},
+                    { dataIndex: 'CompletedCount', text: 'Completed State', csvText: 'Completed Count', draggable: false, hideable: false},
+                    { dataIndex: 'AcceptedCount', text:'Accepted State', csvText: 'Accepted Count', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,
@@ -1334,9 +1334,9 @@ Ext.define("TSIterationSummary", {
             { 
                 text: 'Story Points',
                 columns: [
-                    { dataIndex: 'TotalSize', text:'Total', csvText:'Total Size', draggable: false, hideable: false},
-                    { dataIndex: 'AcceptedSize', text: 'Accepted', csvText: 'Accepted Size', draggable: false, hideable: false},
-                    { dataIndex: 'CompletedSize', text: 'Completed', csvText: 'Completed Size', draggable: false, hideable: false}
+                    { dataIndex: 'TotalSize', text:'Total Planned', csvText:'Total Size', draggable: false, hideable: false},
+                    { dataIndex: 'CompletedSize', text: 'Completed State', csvText: 'Completed Size', draggable: false, hideable: false},
+                    { dataIndex: 'AcceptedSize', text: 'Accepted State', csvText: 'Accepted Size', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,
