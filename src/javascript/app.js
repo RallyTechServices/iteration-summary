@@ -300,8 +300,8 @@ Ext.define("TSIterationSummary", {
             columns: [{ 
                 text: 'Story Points',
                 columns: [
-                    { dataIndex:'PlanEstimate', text: 'Plan Estimate', draggable: false, hideable: false},
-                    { dataIndex:'PlannedVelocity', text:'Planned Velocity', draggable: false, hideable: false}
+                    { dataIndex:'PlannedVelocity', text:'Planned Velocity', draggable: false, hideable: false},
+                    { dataIndex:'PlanEstimate', text: 'Plan Estimate', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,
