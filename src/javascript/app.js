@@ -4,7 +4,7 @@ Ext.define("TSIterationSummary", {
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
     items: [
-        {xtype:'container',itemId:'selector_box'},
+        {xtype:'container',itemId:'selector_box', layout: 'hbox'},
         {xtype:'container',itemId:'display_box'}
     ],
 
@@ -58,6 +58,20 @@ Ext.define("TSIterationSummary", {
             listeners: {
                 scope: this,
                 change: this._updateData
+            }
+        });
+        
+        container.add({xtype:'container',flex:1});
+        
+        container.add({
+            xtype:'rallybutton',
+            itemId:'export_button',
+            cls: 'secondary',
+            text: '<span class="icon-export"> </span>',
+            disabled: true,
+            listeners: {
+                scope: this,
+                click: this._export
             }
         });
     },
@@ -254,7 +268,7 @@ Ext.define("TSIterationSummary", {
     
     _makeGrid: function(rows){
         var store = Ext.create('Rally.data.custom.Store',{data: rows});
-        this.logger.log("Rows: ", rows);
+        this.rows = rows;
         
         this.down('#display_box').add({
             xtype: 'rallygrid',
@@ -262,6 +276,8 @@ Ext.define("TSIterationSummary", {
             showRowActionsColumn : false,
             columnCfgs: this._getColumns()
         });
+        
+        this.down('#export_button').setDisabled(false);
     },
     
     _getColumns: function() {
@@ -275,6 +291,13 @@ Ext.define("TSIterationSummary", {
                 var prefix = "";
                 if ( !record.get('Program') ) {
                     prefix = "&nbsp;&nbsp;&nbsp;&nbsp;";
+                }
+                return prefix + value;
+            },
+            exportRenderer: function(value,meta,record) {
+                var prefix = "";
+                if ( !record.get('Program') ) {
+                    prefix = "    ";
                 }
                 return prefix + value;
             }
@@ -395,6 +418,37 @@ Ext.define("TSIterationSummary", {
     
     isExternal: function(){
         return typeof(this.getAppId()) == 'undefined';
+    },
+    
+    _export: function(){
+        var me = this;
+        this.logger.log('_export');
+        
+        var grid = this.down('rallygrid');
+        var rows = this.rows;
+        
+        this.logger.log('number of rows:', rows.length);
+        
+        if ( !grid && !rows ) { return; }
+        
+        var filename = 'iteration-summary.csv';
+
+        this.logger.log('saving file:', filename);
+        
+        this.setLoading("Generating CSV");
+        Deft.Chain.sequence([
+            function() { return Rally.technicalservices.FileUtilities.getCSVFromRows(this,grid,rows); } 
+        ]).then({
+            scope: this,
+            success: function(csv){
+                if (csv && csv.length > 0){
+                    Rally.technicalservices.FileUtilities.saveCSVToFile(csv,filename);
+                } else {
+                    Rally.ui.notify.Notifier.showWarning({message: 'No data to export'});
+                }
+                
+            }
+        }).always(function() { me.setLoading(false); });
     }
     
 });

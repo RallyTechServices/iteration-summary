@@ -21,9 +21,7 @@ Ext.define('TSRow',{
         { name: 'Stories', type: 'object', defaultValue: [] }
     ],
     
-    addStory: function(story) {
-        console.log("Adding story to ", this.get('Name'));
-        
+    addStory: function(story) { 
         var stories = this.get('Stories') || [];
         stories.push(story);
         this.set('Stories', stories);
