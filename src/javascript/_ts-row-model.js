@@ -22,8 +22,11 @@ Ext.define('TSRow',{
     ],
     
     addStory: function(story) {
+        console.log("Adding story to ", this.get('Name'));
+        
         var stories = this.get('Stories') || [];
         stories.push(story);
+        this.set('Stories', stories);
         
         var size = story.get('PlanEstimate') || 0;
         if ( !Ext.isEmpty(story.get('AcceptedDate')) ) { 
@@ -37,9 +40,28 @@ Ext.define('TSRow',{
             this.addToField('CompletedSize',size);
         }
         
+        if ( this._isSpillIn(story) ) {
+            this.addToField('SpillInCount', 1);
+            this.addToField('SpillInSize',size);
+        }
+        if ( this._isSpillOut(story) ) {
+            this.addToField('SpillOutCount', 1);
+            this.addToField('SpillOutSize',size);
+        }
+        
         this.addToField('TotalCount',1);
         this.addToField('TotalSize', size);
         
+    },
+    
+    _isSpillIn: function(record) {
+        var regex = new RegExp("^\\[Continued\\]", "i");
+        return (regex.test(record.get('Name')) );
+    },
+    
+    _isSpillOut: function(record) {
+        var regex = new RegExp("^\\[Unfinished\\]", "i");
+        return (regex.test(record.get('Name')) );
     },
     
     addToField: function(fieldname, delta) {

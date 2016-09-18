@@ -155,8 +155,7 @@ Ext.define("TSIterationSummary", {
             filters: [
                 {property:'Iteration.Name',value:iteration_name}
             ],
-            limit: 1,
-            pageSize: 1,
+            limit: Infinity,
             fetch: ['Name','ObjectID','PlanEstimate','AcceptedDate','ScheduleState'],
             context: {
                 projectScopeUp: false,

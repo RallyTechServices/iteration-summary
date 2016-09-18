@@ -3,13 +3,13 @@
 <head>
     <title>TS Iteration Summary</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Sun Sep 18 2016 14:28:22 GMT-0700 (PDT) -->
+    <!--  Build Date: Sun Sep 18 2016 14:52:19 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sun Sep 18 2016 14:28:22 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Sun Sep 18 2016 14:52:19 GMT-0700 (PDT)";
         var STORY    = "US676";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 36374274086;
+        var CHECKSUM = 37656320942;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -967,8 +967,11 @@ Ext.define('TSRow',{
     ],
     
     addStory: function(story) {
+        console.log("Adding story to ", this.get('Name'));
+        
         var stories = this.get('Stories') || [];
         stories.push(story);
+        this.set('Stories', stories);
         
         var size = story.get('PlanEstimate') || 0;
         if ( !Ext.isEmpty(story.get('AcceptedDate')) ) { 
@@ -982,9 +985,28 @@ Ext.define('TSRow',{
             this.addToField('CompletedSize',size);
         }
         
+        if ( this._isSpillIn(story) ) {
+            this.addToField('SpillInCount', 1);
+            this.addToField('SpillInSize',size);
+        }
+        if ( this._isSpillOut(story) ) {
+            this.addToField('SpillOutCount', 1);
+            this.addToField('SpillOutSize',size);
+        }
+        
         this.addToField('TotalCount',1);
         this.addToField('TotalSize', size);
         
+    },
+    
+    _isSpillIn: function(record) {
+        var regex = new RegExp("^\\[Continued\\]", "i");
+        return (regex.test(record.get('Name')) );
+    },
+    
+    _isSpillOut: function(record) {
+        var regex = new RegExp("^\\[Unfinished\\]", "i");
+        return (regex.test(record.get('Name')) );
     },
     
     addToField: function(fieldname, delta) {
@@ -1161,8 +1183,7 @@ Ext.define("TSIterationSummary", {
             filters: [
                 {property:'Iteration.Name',value:iteration_name}
             ],
-            limit: 1,
-            pageSize: 1,
+            limit: Infinity,
             fetch: ['Name','ObjectID','PlanEstimate','AcceptedDate','ScheduleState'],
             context: {
                 projectScopeUp: false,

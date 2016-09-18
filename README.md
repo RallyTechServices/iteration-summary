@@ -2,7 +2,13 @@
 
 ## Development Notes
 
-![screenshot](./images/screenshot.png "This is an example")
+
+![screenshot](./images/screenshot.png "table")
+
+* Spill-Over is based on the naming convention of \[Continued\] and \[Unfinished\]
+* Programs are projects chosen in settings and have children projects.  Data is rolled up.
+
+![settings](./images/settings.png "settings")
 
 ### First Load
 
