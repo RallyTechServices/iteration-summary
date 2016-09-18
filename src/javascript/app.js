@@ -7,32 +7,6 @@ Ext.define("TSIterationSummary", {
         {xtype:'container',itemId:'selector_box'},
         {xtype:'container',itemId:'display_box'}
     ],
-    
-//    Ext.create('CA.technicalservices.ProjectTreePickerDialog',{
-//        autoShow: true,
-//        title: 'Choose Project(s)',
-//        //selectedRefs: _.pluck(data, 'projectRef'),
-//        listeners: {
-//            scope: this,
-//            itemschosen: function(items){
-//                var new_data = [],
-//                    store = this._grid.getStore();
-//
-//                Ext.Array.each(items, function(item){
-//                    if (!store.findRecord('projectRef',item.get('_ref'))){
-//                        new_data.push({
-//                            projectRef: item.get('_ref'),
-//                            projectName: item.get('Name'),
-//                            Name: item.get('Name'),
-//                            groupName: null,
-//                            groupOrder: 0
-//                        });
-//                    }
-//                });
-//                this._grid.getStore().add(new_data);
-//            }
-//        }
-//    });
 
     integrationHeaders : {
         name : "TSIterationSummary"
@@ -59,8 +33,8 @@ Ext.define("TSIterationSummary", {
     },
     
     _addSelectors: function(container, projects){
-        var context = this.getContext();
-        if ( this.rows[0].get('_ref') != this.getContext().getProjectRef() ) {
+        var context = { project:this.getContext().getProjectRef() };
+        if ( this.rows[0].get('_ref') !=  context.project ) {
             context = {
                 project: this.rows[0].get('_ref')
             }
@@ -68,8 +42,6 @@ Ext.define("TSIterationSummary", {
         
         context.projectScopeDown = false;
         context.projectScopeUp = false;
-        
-        console.log(context);
         
         this.iteration_selector = container.add({ 
             xtype:'rallyiterationcombobox',
@@ -185,7 +157,7 @@ Ext.define("TSIterationSummary", {
             ],
             limit: 1,
             pageSize: 1,
-            fetch: ['Name','ObjectID','PlanEstimate','AcceptedDate'],
+            fetch: ['Name','ObjectID','PlanEstimate','AcceptedDate','ScheduleState'],
             context: {
                 projectScopeUp: false,
                 projectScopeDown: true,
@@ -283,6 +255,7 @@ Ext.define("TSIterationSummary", {
     
     _makeGrid: function(rows){
         var store = Ext.create('Rally.data.custom.Store',{data: rows});
+        this.logger.log("Rows: ", rows);
         
         this.down('#display_box').add({
             xtype: 'rallygrid',

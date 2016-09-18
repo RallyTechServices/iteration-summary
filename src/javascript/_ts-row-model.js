@@ -10,10 +10,10 @@ Ext.define('TSRow',{
         { name: 'PlannedVelocity', type:'number'},
         { name: 'TotalCount', type: 'number', defaultValue: 0},
         { name: 'AcceptedCount', type: 'number', defaultValue: 0},
-        { name: 'CompletedCount', type:'number', defaultValue: -1},
+        { name: 'CompletedCount', type:'number', defaultValue: 0},
         { name: 'TotalSize', type: 'number', defaultValue: 0},
         { name: 'AcceptedSize', type: 'number', defaultValue: 0},
-        { name: 'CompletedSize', type:'number', defaultValue: -1},
+        { name: 'CompletedSize', type:'number', defaultValue: 0},
         { name: 'SpillInCount', type: 'number', defaultValue: -1},
         { name: 'SpillOutCount', type: 'number', defaultValue: -1},
         { name: 'SpillInSize', type: 'number', defaultValue: -1},
@@ -29,6 +29,11 @@ Ext.define('TSRow',{
         if ( !Ext.isEmpty(story.get('AcceptedDate')) ) { 
             this.addToField('Velocity', size);
             this.addToField('AcceptedCount', 1);
+        }
+        
+        if ( story.get('ScheduleState') == "Completed" ) {
+            this.addToField('CompletedCount', 1);
+            this.addToField('CompletedSize',size);
         }
         
         this.addToField('TotalCount',1);
