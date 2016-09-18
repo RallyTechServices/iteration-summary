@@ -135,7 +135,7 @@ Ext.define("TSIterationSummary", {
             ],
             limit: 1,
             pageSize: 1,
-            fetch: ['Name','ObjectID','PlanEstimate','PlannedVelocity'],
+            fetch: ['Name','ObjectID','PlanEstimate','PlannedVelocity','ChildrenPlannedVelocity'],
             context: {
                 projectScopeUp: false,
                 projectScopeDown: false,
@@ -150,8 +150,14 @@ Ext.define("TSIterationSummary", {
                     row.set('PlanEstimate', 'N/A');
                     row.set('PlannedVelocity', 'N/A');
                 } else {
-                    row.set('PlanEstimate',iteration.get('PlanEstimate'));
                     row.set('PlannedVelocity',iteration.get('PlannedVelocity'));
+                    row.set('ChildrenPlannedVelocity',iteration.get('ChildrenPlannedVelocity'));
+                    
+                    var planned = iteration.get('PlannedVelocity') || 0;
+                    var kid_planned = iteration.get('ChildrenPlannedVelocity') || 0;
+                    
+                    var total_planned = planned + kid_planned;
+                    row.set('_TotalPlannedVelocity',total_planned);
                 }
                 deferred.resolve(row);
             },
@@ -269,6 +275,7 @@ Ext.define("TSIterationSummary", {
     _makeGrid: function(rows){
         var store = Ext.create('Rally.data.custom.Store',{data: rows});
         this.rows = rows;
+        console.log('rows', rows);
         
         this.down('#display_box').add({
             xtype: 'rallygrid',
@@ -322,8 +329,8 @@ Ext.define("TSIterationSummary", {
             columns: [{ 
                 text: 'Story Points',
                 columns: [
-                    { dataIndex:'PlannedVelocity', text:'Planned Velocity', draggable: false, hideable: false},
-                    { dataIndex:'PlanEstimate', text: 'Plan Estimate', draggable: false, hideable: false}
+                    { dataIndex:'_TotalPlannedVelocity', text:'Planned Velocity', draggable: false, hideable: false},
+                    { dataIndex:'_TotalPlanEstimate', text: 'Plan Estimate', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,

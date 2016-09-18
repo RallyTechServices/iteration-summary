@@ -1,3 +1,5 @@
+
+
 Ext.define('TSRow',{
     extend: 'Ext.data.Model',
     fields: [
@@ -8,6 +10,10 @@ Ext.define('TSRow',{
         { name: 'Velocity', type: 'number', defaultValue: 0},
         { name: 'PlanEstimate', type: 'number'},
         { name: 'PlannedVelocity', type:'number'},
+        { name: 'ChildrenPlannedVelocity', type:'number'},
+        { name: '_TotalPlannedVelocity', type: 'number'},
+        { name: '_TotalPlanEstimate', type: 'number'},
+        
         { name: 'TotalCount', type: 'number', defaultValue: 0},
         { name: 'AcceptedCount', type: 'number', defaultValue: 0},
         { name: 'CompletedCount', type:'number', defaultValue: 0},
@@ -49,6 +55,7 @@ Ext.define('TSRow',{
         
         this.addToField('TotalCount',1);
         this.addToField('TotalSize', size);
+        this.addToField('_TotalPlanEstimate', size);
         
     },
     
