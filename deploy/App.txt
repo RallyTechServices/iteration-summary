@@ -3,13 +3,13 @@
 <head>
     <title>TS Iteration Summary</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Sun Sep 18 2016 14:13:02 GMT-0700 (PDT) -->
+    <!--  Build Date: Sun Sep 18 2016 14:15:59 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sun Sep 18 2016 14:13:02 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Sun Sep 18 2016 14:15:59 GMT-0700 (PDT)";
         var STORY    = "US676";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 36188165846;
+        var CHECKSUM = 36282152227;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -973,6 +973,7 @@ Ext.define('TSRow',{
         var size = story.get('PlanEstimate') || 0;
         if ( !Ext.isEmpty(story.get('AcceptedDate')) ) { 
             this.addToField('Velocity', size);
+            this.addToField('AcceptedSize', size);
             this.addToField('AcceptedCount', 1);
         }
         

@@ -28,6 +28,7 @@ Ext.define('TSRow',{
         var size = story.get('PlanEstimate') || 0;
         if ( !Ext.isEmpty(story.get('AcceptedDate')) ) { 
             this.addToField('Velocity', size);
+            this.addToField('AcceptedSize', size);
             this.addToField('AcceptedCount', 1);
         }
         
