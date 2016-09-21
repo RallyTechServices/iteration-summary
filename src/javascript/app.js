@@ -1,8 +1,9 @@
 Ext.define("TSIterationSummary", {
     extend: 'Rally.app.App',
-    componentCls: 'app',
+    componentCls: 'tsapp',
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
+    
     items: [
         {xtype:'container',itemId:'selector_box', layout: 'hbox'},
         {xtype:'container',itemId:'display_box'}
@@ -221,7 +222,6 @@ Ext.define("TSIterationSummary", {
         
         if ( Ext.isString(programs) ) { programs = Ext.JSON.decode(programs); }
         
-        console.log('programs', programs);
         var promises = [];
         Ext.Object.each(programs, function(ref, program){
             promises.push(function() {
@@ -274,14 +274,16 @@ Ext.define("TSIterationSummary", {
     
     _makeGrid: function(rows){
         var store = Ext.create('Rally.data.custom.Store',{data: rows});
+        
         this.rows = rows;
-        console.log('rows', rows);
+        
+        this.logger.log("Made store, about to make grid", store);
         
         this.down('#display_box').add({
             xtype: 'rallygrid',
             store: store,
-            showRowActionsColumn : false,
-            columnCfgs: this._getColumns()
+            columnCfgs: this._getColumns(),
+            showRowActionsColumn: false
         });
         
         this.down('#export_button').setDisabled(false);
@@ -294,6 +296,11 @@ Ext.define("TSIterationSummary", {
             draggable: false, 
             hideable: false,
             sortable: false,
+            
+            stateful: true,
+            stateEvents: ['columnresize'],
+            stateId: 'TSIterationSummary.gridsettings.4',
+            
             renderer: function(value,meta,record) {
                 var prefix = "";
                 if ( !record.get('Program') ) {
