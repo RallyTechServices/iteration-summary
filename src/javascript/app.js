@@ -207,7 +207,8 @@ Ext.define("TSIterationSummary", {
             var config = {
                 model:'Project',
                 filters: [{property:'Parent',value: this.getContext().getProjectRef()}],
-                fetch:['Name','Parent','ObjectID']
+                fetch:['Name','Parent','ObjectID'],
+                sorters: [{property:'Name'}]
             };
         
             return this._loadWsapiRecords(config);
@@ -216,11 +217,34 @@ Ext.define("TSIterationSummary", {
         return this._loadProgramsAndProjects(programs);
     },
     
+    _sortHashByProjectName: function(project_hash){
+        
+        var sorted_hash = {};
+        
+        var project_array = Ext.Object.getValues(project_hash); 
+            
+        var sorted_projects = Ext.Array.sort(project_array, function(a,b) {
+            if ( a.Name < b.Name ) { return -1; }
+            if ( a.Name > b.Name ) { return 1; }
+            return 0;
+        });
+            
+        Ext.Array.each(sorted_projects, function(project) {
+            sorted_hash[project._ref] = project;
+        });
+                
+        return sorted_hash;
+    },
+    
     _loadProgramsAndProjects: function(programs) {
         var me = this,
             deferred = Ext.create('Deft.Deferred');
         
         if ( Ext.isString(programs) ) { programs = Ext.JSON.decode(programs); }
+
+        console.log('programs:', programs);
+        
+        programs = this._sortHashByProjectName(programs);
         
         var promises = [];
         Ext.Object.each(programs, function(ref, program){
@@ -232,7 +256,8 @@ Ext.define("TSIterationSummary", {
             var config = {
                 model:'Project',
                 filters: [{property:'Parent',value: ref}],
-                fetch:['Name','Parent','ObjectID']
+                fetch:['Name','Parent','ObjectID'],
+                sorters: [{property:'Name'}]
             };
             promises.push(function() {
                 return me._loadWsapiRecords(config);
