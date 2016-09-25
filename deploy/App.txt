@@ -3,13 +3,13 @@
 <head>
     <title>TS Iteration Summary</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Wed Sep 21 2016 17:43:12 GMT-0700 (PDT) -->
+    <!--  Build Date: Sun Sep 25 2016 16:53:56 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Sep 21 2016 17:43:12 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Sun Sep 25 2016 16:53:56 GMT-0700 (PDT)";
         var STORY    = "US676";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 71507959339;
+        var CHECKSUM = 71532443894;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -1767,7 +1767,7 @@ Ext.define("TSIterationSummary", {
             columns: [{ 
                 text: 'Story Points',
                 columns: [
-                    { dataIndex:'Velocity', text: 'Velocity', draggable: false, hideable: false}
+                    { dataIndex:'Velocity', text: 'Sprint Velocity', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,

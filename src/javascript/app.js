@@ -346,7 +346,7 @@ Ext.define("TSIterationSummary", {
             columns: [{ 
                 text: 'Story Points',
                 columns: [
-                    { dataIndex:'Velocity', text: 'Velocity', draggable: false, hideable: false}
+                    { dataIndex:'Velocity', text: 'Sprint Velocity', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,
