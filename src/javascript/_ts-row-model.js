@@ -13,12 +13,18 @@ Ext.define('TSRow',{
         { name: 'PlannedVelocity', type:'number'}, // filled out on the sprint
         { name: 'ChildrenPlannedVelocity', type:'number'},
         { name: 'Iteration', type:'object'},
+        { name: 'IterationMinus1', type:'object'},
+        { name: 'IterationMinus2', type:'object'},
         
         { name: '_TotalPlannedVelocity', type: 'number', defaultValue: 0},  // rolled up
         { name: '_TotalPlanEstimate', type: 'number', defaultValue: 0}, // rolled up
         { name: '_TotalFirstDayPlanEstimate', type: 'number', defaultValue: 0},
+        { name: '_TotalFirstDayPlanEstimateMinus1', type: 'number', defaultValue: 0},
+        { name: '_TotalFirstDayPlanEstimateMinus2', type: 'number', defaultValue: 0},
         
-        { name: '_TotalFinalDayAccepted', type:'number', defaultValue: 0 }, // rolled up
+        { name: '_TotalLastDayAccepted', type:'number', defaultValue: 0 }, // rolled up
+        { name: '_TotalLastDayAcceptedMinus1', type:'number', defaultValue: 0 }, // rolled up
+        { name: '_TotalLastDayAcceptedMinus2', type:'number', defaultValue: 0 }, // rolled up
         
         { name: 'TotalCount', type: 'number', defaultValue: 0},
         { name: 'AcceptedCount', type: 'number', defaultValue: 0},
@@ -33,24 +39,33 @@ Ext.define('TSRow',{
         { name: 'Stories', type: 'object', defaultValue: [] }
     ],
     
-    addToInitialPlanEstimate: function(value) {
+    addToInitialPlanEstimate: function(value,iteration_index) {
         var new_value = value || 0;
-        var current = this.get('_TotalFirstDayPlanEstimate') || 0;
-        this.set('_TotalFirstDayPlanEstimate', current + new_value );
+        var fields = ['_TotalFirstDayPlanEstimate','_TotalFirstDayPlanEstimateMinus1','_TotalFirstDayPlanEstimateMinus2'];
+        var field = fields[iteration_index];
+        
+        var current = this.get(field) || 0;
+        
+        this.set(field, current + new_value );
         
         if ( this.get('Parent') ) {
-            this.get('Parent').addToInitialPlanEstimate(value); 
+            this.get('Parent').addToInitialPlanEstimate(value,iteration_index); 
         }
         
     },
     
-    addToFinalDayAccepted: function(value) {
+    addToFinalDayAccepted: function(value,iteration_index) {
         var new_value = value || 0;
-        var current = this.get('_TotalFinalDayAccepted') || 0;
-        this.set('_TotalFinalDayAccepted', current + new_value );
+        var fields = ['_TotalLastDayAccepted','_TotalLastDayAcceptedMinus1','_TotalLastDayAcceptedMinus2'];
+        var field = fields[iteration_index];
+
+        console.log('adding ', value, 'to', field, iteration_index);
+        
+        var current = this.get(field) || 0;
+        this.set(field, current + new_value );
         
         if ( this.get('Parent') ) {
-            this.get('Parent').addToFinalDayAccepted(value); 
+            this.get('Parent').addToFinalDayAccepted(value,iteration_index); 
         }
         
     },
@@ -110,7 +125,10 @@ Ext.define('TSRow',{
             'TotalSize','AcceptedSize','CompletedSize',
             'SpillInCount','SpillOutCount','SpillInSize', 'SpillOutSize',
             
-            '_TotalPlannedVelocity','_TotalPlanEstimate','_TotalFirstDayPlanEstimate'];
+            '_TotalPlannedVelocity','_TotalPlanEstimate',
+            '_TotalFirstDayPlanEstimate','_TotalFirstDayPlanEstimateMinus1','_TotalFirstDayPlanEstimateMinus2',
+            '_TotalLastDayAccepted','_TotalLastDayAcceptedMinus1','_TotalLastDayAcceptedMinus2'
+        ];
         
         
         this.set('Stories',[]);
