@@ -3,13 +3,13 @@
 <head>
     <title>TS Iteration Summary</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Sun Sep 25 2016 16:53:56 GMT-0700 (PDT) -->
+    <!--  Build Date: Sun Sep 25 2016 18:59:07 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sun Sep 25 2016 16:53:56 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Sun Sep 25 2016 18:59:07 GMT-0700 (PDT)";
         var STORY    = "US676";
         var BUILDER  = "jmartin";
-        var CHECKSUM = 71532443894;
+        var CHECKSUM = 116625837053;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -17,6 +17,387 @@
     <script type="text/javascript">
         Rally.onReady(function() {
              
+Ext.define('TSUtilities', {
+    singleton: true,
+      
+    loadWsapiRecords: function(config,returnOperation){
+        var deferred = Ext.create('Deft.Deferred');
+        var me = this;
+                
+        var default_config = {
+            model: 'Defect',
+            fetch: ['ObjectID']
+        };
+        Ext.create('Rally.data.wsapi.Store', Ext.Object.merge(default_config,config)).load({
+            callback : function(records, operation, successful) {
+                if (successful){
+                    if ( returnOperation ) {
+                        deferred.resolve(operation);
+                    } else {
+                        deferred.resolve(records);
+                    }
+                } else {
+                    deferred.reject('Problem loading: ' + operation.error.errors.join('. '));
+                }
+            }
+        });
+        return deferred.promise;
+    },
+    
+    loadWsapiArtifactRecords: function(config,returnOperation){
+        var deferred = Ext.create('Deft.Deferred');
+        var me = this;
+                
+        var default_config = {
+            fetch: ['ObjectID'],
+            enablePostGet: true,
+            models: ['HierarchicalRequirement','Defect','TestSet','DefectSuite']
+        };
+        Ext.create('Rally.data.wsapi.artifact.Store', Ext.Object.merge(default_config,config)).load({
+            callback : function(records, operation, successful) {
+                if (successful){
+                    if ( returnOperation ) {
+                        deferred.resolve(operation);
+                    } else {
+                        deferred.resolve(records);
+                    }
+                } else {
+                    deferred.reject('Problem loading: ' + operation.error.errors.join('. '));
+                }
+            }
+        });
+        return deferred.promise;
+    },
+    
+    loadLookbackRecords: function(config,returnOperation){
+        var deferred = Ext.create('Deft.Deferred');
+        var me = this;
+                
+        var default_config = {
+            fetch: ['ObjectID']
+        };
+        Ext.create('Rally.data.lookback.SnapshotStore', Ext.Object.merge(default_config,config)).load({
+            callback : function(records, operation, successful) {
+                if (successful){
+                    if ( returnOperation ) {
+                        deferred.resolve(operation);
+                    } else {
+                        deferred.resolve(records);
+                    }
+                } else {
+                    deferred.reject('Problem loading: ' + operation.error.errors.join('. '));
+                }
+            }
+        });
+        return deferred.promise;
+    },
+    
+    loadWsapiRecordsWithParallelPages: function(config, msg) {
+        var deferred = Ext.create('Deft.Deferred'),
+            me = this;
+        
+        var count_check_config = Ext.clone(config);
+        count_check_config.limit = 1;
+        count_check_config.pageSize = 1;
+        count_check_config.fetch = ['ObjectID'];
+        
+        this.loadWsapiRecords(count_check_config, true).then({
+            success: function(operation) {                
+                config.pageSize = 200;
+                config.limit = config.pageSize;
+                var total = operation.resultSet.totalRecords;
+                var page_count = Math.ceil(total/config.pageSize);
+     
+                var promises = [];
+                Ext.Array.each(_.range(1,page_count+1), function(page_index) {
+                    var config_clone = Ext.clone(config);
+                    config_clone.currentPage = page_index;
+                    promises.push(function() {
+                        var percentage = parseInt( page_index * 100 / page_count, 10);
+                        var message = msg || "Loading values";
+                        Rally.getApp().setLoading(message + " (" + percentage + "%)");
+                        return me.loadWsapiRecords(config_clone); 
+                    });
+                });
+                CA.techservices.promise.ParallelThrottle.throttle(promises, 6, me).then({
+                        success: function(results){
+                            deferred.resolve( Ext.Array.flatten(results) );
+                        },
+                        failure: function(msg) {
+                            deferred.reject(msg);
+                        }
+                });
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            }
+        });
+        return deferred.promise;
+    },
+    
+    getPreferenceProject: function() {
+        var app = Rally.getApp();
+        
+        return app.getSetting('preferenceProjectRef');
+    },
+    
+    isEditableProjectForCurrentUser: function(projectRef,scope) {
+        var app = scope || Rally.getApp(),
+            me = this;
+
+        if ( this.currentUserIsAdmin(scope) ) {
+            return true;
+        }
+        
+        var project_oid = this._getOidFromRef(projectRef);
+        var editor_permissions = Ext.Array.filter(app.getContext().getPermissions().userPermissions, function(permission){
+            if ( permission.Role != "Editor" && permission.Role != "ProjectAdmin") {
+                return false;
+            }
+            
+            return ( me._getOidFromRef(permission._ref) == project_oid );
+        });
+        
+        console.log(editor_permissions);
+        return ( editor_permissions.length > 0 );
+    },
+    
+    getEditableProjectForCurrentUser: function() {
+        var app = Rally.getApp();
+        if ( this._currentUserCanWrite() ) {
+            return app.getContext().getProjectRef();
+        }
+        
+        var workspace_oid = this._getOidFromRef( app.getContext().getWorkspaceRef());
+        
+        var editor_permissions = Ext.Array.filter(app.getContext().getPermissions().userPermissions, function(permission){
+            if ( Ext.isEmpty(permission.Workspace) ) {
+                return false;
+            }
+            var permission_oid = this._getOidFromRef(permission.Workspace);
+
+            //console.log('comparing ', workspace_oid, permission_oid, permission);
+            if (workspace_oid  !=  permission_oid) {
+                return false;
+            }
+                        
+            return ( permission.Role == "Editor" || permission.Role == "ProjectAdmin");
+        },this);
+        
+        
+        if ( editor_permissions.length > 0 ) {
+            return editor_permissions[0]._ref;
+        }
+        return false;
+    },
+    
+    _getOidFromRef: function(ref) {
+        var ref_array = ref.replace(/\.js$/,'').split(/\//);
+        return ref_array[ref_array.length-1].replace(/\.js/,'');
+    },
+    
+    // true if sub or workspace admin
+    currentUserIsAdmin: function(scope){
+        var app = scope || Rally.getApp();
+        
+        console.log('current user:', app.getContext().getUser());
+        if ( this.currentUserIsSubAdmin() ) {
+            return true;
+        }
+        
+        var permissions = app.getContext().getPermissions().userPermissions;
+
+        var workspace_admin_list = Ext.Array.filter(permissions, function(p) {
+            return ( p.Role == "Workspace Admin" || p.Role == "Subscription Admin");
+        });
+        
+        var current_workspace_ref = app.getContext().getWorkspace()._ref;
+        var is_workspace_admin = false;
+                
+        if ( workspace_admin_list.length > 0 ) {
+            Ext.Array.each(workspace_admin_list, function(p){
+                
+                if (current_workspace_ref.replace(/\.js$/,'') == p._ref.replace(/\.js$/,'')) {
+                    is_workspace_admin = true;
+                }
+            });
+        }
+        
+        return is_workspace_admin;
+    },
+    
+    currentUserIsSubAdmin: function(scope) {
+        var app = scope || Rally.getApp();
+                
+        var permissions = app.getContext().getPermissions().userPermissions;
+
+        var sub_admin_list = Ext.Array.filter(permissions, function(p) {
+            return ( p.Role == 'Subscription Admin' );
+        });
+        
+        return ( sub_admin_list.length > 0 );
+    },
+    
+    getStartFieldForTimeboxType: function(type) {
+        if ( type.toLowerCase() == "release" ) {
+            return 'ReleaseStartDate';
+        }
+        
+        return 'StartDate';
+    },
+    
+    getEndFieldForTimeboxType: function(type) {
+        if ( type.toLowerCase() == "release" ) {
+            return 'ReleaseDate';
+        }
+        
+        return 'EndDate';
+    },
+
+    getAllowedValues: function(model, field_name) {
+        var deferred = Ext.create('Deft.Deferred');
+        
+        Rally.data.ModelFactory.getModel({
+            type: model,
+            success: function(model) {
+                model.getField(field_name).getAllowedValueStore().load({
+                    callback: function(records, operation, success) {
+                        var values = Ext.Array.map(records, function(record) {
+                            return record.get('StringValue');
+                        });
+                        deferred.resolve(values);
+                    }
+                });
+            },
+            failure: function(msg) { deferred.reject('Error loading field values: ' + msg); }
+        });
+        return deferred;
+    },
+
+    getPortoflioItemModels: function(workspace) {
+        var deferred = Ext.create('Deft.Deferred');
+        
+        TSUtilities.getPortfolioItemTypes(workspace).then({
+            success: function(types) {
+                var promises = [];
+                Ext.Array.each(types, function(type) {
+                    promises.push(
+                        function() { return TSUtilities.getPortfolioItemModel(workspace,type.get('TypePath')); }
+                    );
+                });
+                    
+                Deft.Chain.sequence(promises).then({
+                    success: function(models) {
+                        deferred.resolve(models);
+                    },
+                    failure: function(msg) {
+                        deferred.reject(msg);
+                    }
+                });
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            }
+        });
+        
+        return deferred.promise;
+    },
+    
+    getPortfolioItemModel: function(workspace, typepath) {
+        var deferred = Ext.create('Deft.Deferred');
+        Rally.data.ModelFactory.getModel({
+            type: typepath,
+            context: {
+                workspace: workspace.get('_ref')
+            },
+            success: function(model) {
+               deferred.resolve(model);
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            }
+        });
+        return deferred.promise;
+    },
+    
+    getPortfolioItemTypes: function(workspace) {
+        var deferred = Ext.create('Deft.Deferred');
+                
+        var store_config = {
+            fetch: ['Name','ElementName','TypePath'],
+            model: 'TypeDefinition',
+            filters: [
+                {
+                    property: 'Parent.Name',
+                    operator: '=',
+                    value: 'Portfolio Item'
+                },
+                {
+                    property: 'Creatable',
+                    operator: '=',
+                    value: 'true'
+                }
+            ],
+            autoLoad: true,
+            listeners: {
+                load: function(store, records, successful) {
+                    if (successful){
+                        deferred.resolve(records);
+                    } else {
+                        deferred.reject('Failed to load types');
+                    }
+                }
+            }
+        };
+        
+        if ( !Ext.isEmpty(workspace) ) {            
+            store_config.context = { 
+                project:null,
+                workspace: workspace._ref ? workspace._ref : workspace.get('_ref')
+            };
+        }
+        
+        var store = Ext.create('Rally.data.wsapi.Store', store_config );
+                    
+        return deferred.promise;
+    },
+
+
+    getWorkspaces: function() {
+        var deferred = Ext.create('Deft.Deferred');
+        var config = {
+            model: 'Subscription',
+            fetch: ['ObjectID','Workspaces']
+        };
+        
+        TSUtilities.loadWsapiRecords(config).then({
+            scope: this,
+            success: function(subs) {
+                var sub = subs[0];
+                sub.getCollection('Workspaces').load({
+                    fetch: ['ObjectID','Name','State'],
+                    sorters: [{property:'Name'}],
+                    callback: function(workspaces,operation,success){
+                        
+                        var open_workspaces = Ext.Array.filter(workspaces, function(ws) {
+                            if ( Rally.getApp().getSetting('showAllWorkspaces') == false ) {
+                                return ( ws.get('ObjectID') == Rally.getApp().getContext().getWorkspace().ObjectID );
+                            }
+                            
+                            return ( ws.get('State') == "Open" ) ;
+                        });
+                        deferred.resolve(open_workspaces);
+                    }
+                });
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            }
+        });
+        return deferred.promise;
+    }
+
+});
 /**
  * A link that pops up a version dialog box
  */
@@ -1339,13 +1720,19 @@ Ext.define('TSRow',{
         { name: '_ref', type:'string' },
         { name: 'ObjectID', type:'integer' },
         { name: 'Name', type:'string' },
+        { name: 'Parent', type: 'object' },
         { name: 'Program', type:'boolean', defaultValue: false},
         { name: 'Velocity', type: 'number', defaultValue: 0},
-        { name: 'PlanEstimate', type: 'number'},
-        { name: 'PlannedVelocity', type:'number'},
+        { name: 'PlanEstimate', type: 'number'}, // current value of this specific sprint's scheduled items
+        { name: 'PlannedVelocity', type:'number'}, // filled out on the sprint
         { name: 'ChildrenPlannedVelocity', type:'number'},
-        { name: '_TotalPlannedVelocity', type: 'number'},
-        { name: '_TotalPlanEstimate', type: 'number'},
+        { name: 'Iteration', type:'object'},
+        
+        { name: '_TotalPlannedVelocity', type: 'number', defaultValue: 0},  // rolled up
+        { name: '_TotalPlanEstimate', type: 'number', defaultValue: 0}, // rolled up
+        { name: '_TotalFirstDayPlanEstimate', type: 'number', defaultValue: 0},
+        
+        { name: '_TotalFinalDayAccepted', type:'number', defaultValue: 0 }, // rolled up
         
         { name: 'TotalCount', type: 'number', defaultValue: 0},
         { name: 'AcceptedCount', type: 'number', defaultValue: 0},
@@ -1359,6 +1746,28 @@ Ext.define('TSRow',{
         { name: 'SpillOutSize', type: 'number', defaultValue: -1},
         { name: 'Stories', type: 'object', defaultValue: [] }
     ],
+    
+    addToInitialPlanEstimate: function(value) {
+        var new_value = value || 0;
+        var current = this.get('_TotalFirstDayPlanEstimate') || 0;
+        this.set('_TotalFirstDayPlanEstimate', current + new_value );
+        
+        if ( this.get('Parent') ) {
+            this.get('Parent').addToInitialPlanEstimate(value); 
+        }
+        
+    },
+    
+    addToFinalDayAccepted: function(value) {
+        var new_value = value || 0;
+        var current = this.get('_TotalFinalDayAccepted') || 0;
+        this.set('_TotalFinalDayAccepted', current + new_value );
+        
+        if ( this.get('Parent') ) {
+            this.get('Parent').addToFinalDayAccepted(value); 
+        }
+        
+    },
     
     addStory: function(story) { 
         var stories = this.get('Stories') || [];
@@ -1390,6 +1799,9 @@ Ext.define('TSRow',{
         this.addToField('TotalSize', size);
         this.addToField('_TotalPlanEstimate', size);
         
+        if ( this.get('Parent') ) {
+            this.get('Parent').addStory(story); 
+        }
     },
     
     _isSpillIn: function(record) {
@@ -1410,7 +1822,10 @@ Ext.define('TSRow',{
         var changeable_fields = ['Velocity','PlannedVelocity',
             'TotalCount','AcceptedCount','CompletedCount',
             'TotalSize','AcceptedSize','CompletedSize',
-            'SpillInCount','SpillOutCount','SpillInSize', 'SpillOutSize'];
+            'SpillInCount','SpillOutCount','SpillInSize', 'SpillOutSize',
+            
+            '_TotalPlannedVelocity','_TotalPlanEstimate','_TotalFirstDayPlanEstimate'];
+        
         
         this.set('Stories',[]);
         
@@ -1439,9 +1854,7 @@ Ext.define("TSIterationSummary", {
         this.setLoading('Fetching Projects...');
         this._loadProjects().then({
             success: function(projects) {
-                this.rows = Ext.Array.map(projects, function(project){
-                    return Ext.create('TSRow', project.getData());
-                });
+                this.rows = projects;
                 
                 if ( this.rows.length === 0 ) { return; }
 
@@ -1542,12 +1955,14 @@ Ext.define("TSIterationSummary", {
     _gatherIterationInformationForRow: function(iteration_name,row){
         var me = this;
         return Deft.Chain.sequence([
-            function() { return me._gatherInitialIterationInformationForRow(iteration_name, row); },
+            function() { return me._gatherBaseIterationInformationForRow(iteration_name, row); },
+            function() { return me._gatherFirstDayInformationForRow(iteration_name, row); },
+            function() { return me._gatherLastDayInformationForRow(iteration_name, row); },
             function() { return me._gatherStoriesInIterationForRow(iteration_name, row); }
         ], this);
     },
     
-    _gatherInitialIterationInformationForRow: function(iteration_name,row) {
+    _gatherBaseIterationInformationForRow: function(iteration_name,row) {
         var deferred = Ext.create('Deft.Deferred');
         var config = {
             model: 'Iteration',
@@ -1557,7 +1972,7 @@ Ext.define("TSIterationSummary", {
             ],
             limit: 1,
             pageSize: 1,
-            fetch: ['Name','ObjectID','PlanEstimate','PlannedVelocity','ChildrenPlannedVelocity'],
+            fetch: ['Name','ObjectID','PlanEstimate','PlannedVelocity','ChildrenPlannedVelocity','StartDate','EndDate'],
             context: {
                 projectScopeUp: false,
                 projectScopeDown: false,
@@ -1565,13 +1980,14 @@ Ext.define("TSIterationSummary", {
             }
         };
         
-        this._loadWsapiRecords(config).then({
+        TSUtilities.loadWsapiRecords(config).then({
             success: function(iterations) {
                 var iteration = iterations[0];
                 if ( Ext.isEmpty(iteration) ) {
                     row.set('PlanEstimate', 'N/A');
                     row.set('PlannedVelocity', 'N/A');
                 } else {
+                    row.set('Iteration', iteration);
                     row.set('PlannedVelocity',iteration.get('PlannedVelocity'));
                     row.set('ChildrenPlannedVelocity',iteration.get('ChildrenPlannedVelocity'));
                     
@@ -1580,6 +1996,7 @@ Ext.define("TSIterationSummary", {
                     
                     var total_planned = planned + kid_planned;
                     row.set('_TotalPlannedVelocity',total_planned);
+                    
                 }
                 deferred.resolve(row);
             },
@@ -1587,6 +2004,80 @@ Ext.define("TSIterationSummary", {
             scope: this
         });
         
+        return deferred.promise;
+    },
+    
+    _gatherFirstDayInformationForRow: function(iteration_name, row ) {
+        var deferred = Ext.create('Deft.Deferred');
+        
+        var iteration = row.get('Iteration');
+        
+        var filters = [];
+        if ( Ext.isEmpty(iteration) ) {
+            filters.push( { property:'ObjectID', value: -1 } );
+        } else {
+            var iteration_oid =  iteration.get('ObjectID');
+            var iteration_start = iteration.get('StartDate');
+            var end_of_first_day = Rally.util.DateTime.add(iteration_start,'day',1);
+            
+            filters.push({property:'__At',value:Rally.util.DateTime.toIsoString(end_of_first_day)});
+            filters.push({property:'Iteration',value:iteration_oid});
+        }
+        
+        var config = {
+            filters: filters,
+            fetch: ['ObjectID','PlanEstimate']
+        }
+        TSUtilities.loadLookbackRecords(config).then({
+            success: function(snapshots) {
+                Ext.Array.each(snapshots, function(snapshot){
+                    row.addToInitialPlanEstimate(snapshot.get('PlanEstimate') || 0 );
+                });
+                
+                deferred.resolve(row);
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            },
+            scope: this
+        });
+        return deferred.promise;
+    },
+    
+    _gatherLastDayInformationForRow: function(iteration_name, row ) {
+        var deferred = Ext.create('Deft.Deferred');
+        
+        var iteration = row.get('Iteration');
+        
+        var filters = [];
+        if ( Ext.isEmpty(iteration) ) {
+            filters.push( { property:'ObjectID', value: -1 } );
+        } else {
+            var iteration_oid =  iteration.get('ObjectID');
+            var iteration_end = iteration.get('EndDate');
+            
+            filters.push({property:'__At',value:Rally.util.DateTime.toIsoString(iteration_end)});
+            filters.push({property:'Iteration',value:iteration_oid});
+            filters.push({property:'ScheduleState',operator:'>=',value:'Accepted'})
+        }
+        
+        var config = {
+            filters: filters,
+            fetch: ['ObjectID','PlanEstimate']
+        }
+        TSUtilities.loadLookbackRecords(config).then({
+            success: function(snapshots) {
+                Ext.Array.each(snapshots, function(snapshot){
+                    row.addToFinalDayAccepted(snapshot.get('PlanEstimate') || 0 );
+                });
+                
+                deferred.resolve(row);
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            },
+            scope: this
+        });
         return deferred.promise;
     },
     
@@ -1601,12 +2092,12 @@ Ext.define("TSIterationSummary", {
             fetch: ['Name','ObjectID','PlanEstimate','AcceptedDate','ScheduleState'],
             context: {
                 projectScopeUp: false,
-                projectScopeDown: true,
+                projectScopeDown: false,
                 project: row.get('_ref')
             }
         };
         
-        this._loadWsapiRecords(config).then({
+        TSUtilities.loadWsapiRecords(config).then({
             success: function(stories) {
                 Ext.Array.each(stories, function(story) {
                     row.addStory(story);
@@ -1632,7 +2123,7 @@ Ext.define("TSIterationSummary", {
                 sorters: [{property:'Name'}]
             };
         
-            return this._loadWsapiRecords(config);
+            return TSUtilities.loadWsapiRecords(config);
         } 
         
         return this._loadProgramsAndProjects(programs);
@@ -1662,16 +2153,16 @@ Ext.define("TSIterationSummary", {
             deferred = Ext.create('Deft.Deferred');
         
         if ( Ext.isString(programs) ) { programs = Ext.JSON.decode(programs); }
-
-        console.log('programs:', programs);
         
         programs = this._sortHashByProjectName(programs);
         
         var promises = [];
         Ext.Object.each(programs, function(ref, program){
+            program.Program = true;
+            var program_row = Ext.create('TSRow', program);
+            
             promises.push(function() {
-                program.Program = true;
-                return Ext.create('TSRow', program);
+                return program_row;
             });
             
             var config = {
@@ -1681,13 +2172,29 @@ Ext.define("TSIterationSummary", {
                 sorters: [{property:'Name'}]
             };
             promises.push(function() {
-                return me._loadWsapiRecords(config);
+                return TSUtilities.loadWsapiRecords(config);
             });
         });
         
         Deft.Chain.sequence(promises,this).then({
             success: function(results) {
-                deferred.resolve(Ext.Array.flatten(results));
+                var program = null;
+                var items = Ext.Array.flatten(results);
+                var rows = [];
+                
+                Ext.Array.each(items, function(result) {
+                    console.log(result);
+                    if (result.get('Program')) {
+                        program = result;
+                        rows.push(result);
+                    } else {
+                        var data = result.getData();
+                        data.Parent = program;
+                        var item = Ext.create('TSRow', data);
+                        rows.push(item);
+                    }
+                });
+                deferred.resolve(rows);
             },
             failure: function(msg) {
                 deferred.reject(msg);
@@ -1696,32 +2203,12 @@ Ext.define("TSIterationSummary", {
         
         return deferred;
     },
-      
-    _loadWsapiRecords: function(config){
-        var deferred = Ext.create('Deft.Deferred');
-        var me = this;
-        var default_config = {
-            model: 'Defect',
-            fetch: ['ObjectID']
-        };
-        this.logger.log("Starting load:",config.model);
-        Ext.create('Rally.data.wsapi.Store', Ext.Object.merge(default_config,config)).load({
-            callback : function(records, operation, successful) {
-                if (successful){
-                    deferred.resolve(records);
-                } else {
-                    me.logger.log("Failed: ", operation);
-                    deferred.reject('Problem loading: ' + operation.error.errors.join('. '));
-                }
-            }
-        });
-        return deferred.promise;
-    },
     
     _makeGrid: function(rows){
         var store = Ext.create('Rally.data.custom.Store',{data: rows});
         
         this.rows = rows;
+        console.log("Rows:", rows);
         
         this.logger.log("Made store, about to make grid", store);
         
@@ -1767,7 +2254,7 @@ Ext.define("TSIterationSummary", {
             columns: [{ 
                 text: 'Story Points',
                 columns: [
-                    { dataIndex:'Velocity', text: 'Sprint Velocity', draggable: false, hideable: false}
+                    { dataIndex:'_TotalFinalDayAccepted', text: 'Sprint Velocity (Last Day)', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,
@@ -1783,7 +2270,8 @@ Ext.define("TSIterationSummary", {
                 text: 'Story Points',
                 columns: [
                     { dataIndex:'_TotalPlannedVelocity', text:'Planned Velocity', draggable: false, hideable: false},
-                    { dataIndex:'_TotalPlanEstimate', text: 'Plan Estimate', draggable: false, hideable: false}
+                    //{ dataIndex:'_TotalPlanEstimate', text: 'Plan Estimate', draggable: false, hideable: false}
+                    { dataIndex:'_TotalFirstDayPlanEstimate', text: 'First Day Plan Estimate', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,
@@ -1799,7 +2287,7 @@ Ext.define("TSIterationSummary", {
             columns: [{ 
                 text: 'Story Count',
                 columns: [
-                    { dataIndex: 'TotalCount', text: 'Total Planned', csvText: 'Total Count', draggable: false, hideable: false},
+                    { dataIndex: 'TotalCount', text: 'Total Scheduled', csvText: 'Total Count', draggable: false, hideable: false},
                     { dataIndex: 'CompletedCount', text: 'Completed State', csvText: 'Completed Count', draggable: false, hideable: false},
                     { dataIndex: 'AcceptedCount', text:'Accepted State', csvText: 'Accepted Count', draggable: false, hideable: false}
                 ],
@@ -1810,7 +2298,7 @@ Ext.define("TSIterationSummary", {
             { 
                 text: 'Story Points',
                 columns: [
-                    { dataIndex: 'TotalSize', text:'Total Planned', csvText:'Total Size', draggable: false, hideable: false},
+                    { dataIndex: 'TotalSize', text:'Total Scheduled', csvText:'Total Size', draggable: false, hideable: false},
                     { dataIndex: 'CompletedSize', text: 'Completed State', csvText: 'Completed Size', draggable: false, hideable: false},
                     { dataIndex: 'AcceptedSize', text: 'Accepted State', csvText: 'Accepted Size', draggable: false, hideable: false}
                 ],

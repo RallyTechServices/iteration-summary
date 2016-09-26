@@ -18,9 +18,7 @@ Ext.define("TSIterationSummary", {
         this.setLoading('Fetching Projects...');
         this._loadProjects().then({
             success: function(projects) {
-                this.rows = Ext.Array.map(projects, function(project){
-                    return Ext.create('TSRow', project.getData());
-                });
+                this.rows = projects;
                 
                 if ( this.rows.length === 0 ) { return; }
 
@@ -121,12 +119,14 @@ Ext.define("TSIterationSummary", {
     _gatherIterationInformationForRow: function(iteration_name,row){
         var me = this;
         return Deft.Chain.sequence([
-            function() { return me._gatherInitialIterationInformationForRow(iteration_name, row); },
+            function() { return me._gatherBaseIterationInformationForRow(iteration_name, row); },
+            function() { return me._gatherFirstDayInformationForRow(iteration_name, row); },
+            function() { return me._gatherLastDayInformationForRow(iteration_name, row); },
             function() { return me._gatherStoriesInIterationForRow(iteration_name, row); }
         ], this);
     },
     
-    _gatherInitialIterationInformationForRow: function(iteration_name,row) {
+    _gatherBaseIterationInformationForRow: function(iteration_name,row) {
         var deferred = Ext.create('Deft.Deferred');
         var config = {
             model: 'Iteration',
@@ -136,7 +136,7 @@ Ext.define("TSIterationSummary", {
             ],
             limit: 1,
             pageSize: 1,
-            fetch: ['Name','ObjectID','PlanEstimate','PlannedVelocity','ChildrenPlannedVelocity'],
+            fetch: ['Name','ObjectID','PlanEstimate','PlannedVelocity','ChildrenPlannedVelocity','StartDate','EndDate'],
             context: {
                 projectScopeUp: false,
                 projectScopeDown: false,
@@ -144,13 +144,14 @@ Ext.define("TSIterationSummary", {
             }
         };
         
-        this._loadWsapiRecords(config).then({
+        TSUtilities.loadWsapiRecords(config).then({
             success: function(iterations) {
                 var iteration = iterations[0];
                 if ( Ext.isEmpty(iteration) ) {
                     row.set('PlanEstimate', 'N/A');
                     row.set('PlannedVelocity', 'N/A');
                 } else {
+                    row.set('Iteration', iteration);
                     row.set('PlannedVelocity',iteration.get('PlannedVelocity'));
                     row.set('ChildrenPlannedVelocity',iteration.get('ChildrenPlannedVelocity'));
                     
@@ -159,6 +160,7 @@ Ext.define("TSIterationSummary", {
                     
                     var total_planned = planned + kid_planned;
                     row.set('_TotalPlannedVelocity',total_planned);
+                    
                 }
                 deferred.resolve(row);
             },
@@ -166,6 +168,80 @@ Ext.define("TSIterationSummary", {
             scope: this
         });
         
+        return deferred.promise;
+    },
+    
+    _gatherFirstDayInformationForRow: function(iteration_name, row ) {
+        var deferred = Ext.create('Deft.Deferred');
+        
+        var iteration = row.get('Iteration');
+        
+        var filters = [];
+        if ( Ext.isEmpty(iteration) ) {
+            filters.push( { property:'ObjectID', value: -1 } );
+        } else {
+            var iteration_oid =  iteration.get('ObjectID');
+            var iteration_start = iteration.get('StartDate');
+            var end_of_first_day = Rally.util.DateTime.add(iteration_start,'day',1);
+            
+            filters.push({property:'__At',value:Rally.util.DateTime.toIsoString(end_of_first_day)});
+            filters.push({property:'Iteration',value:iteration_oid});
+        }
+        
+        var config = {
+            filters: filters,
+            fetch: ['ObjectID','PlanEstimate']
+        }
+        TSUtilities.loadLookbackRecords(config).then({
+            success: function(snapshots) {
+                Ext.Array.each(snapshots, function(snapshot){
+                    row.addToInitialPlanEstimate(snapshot.get('PlanEstimate') || 0 );
+                });
+                
+                deferred.resolve(row);
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            },
+            scope: this
+        });
+        return deferred.promise;
+    },
+    
+    _gatherLastDayInformationForRow: function(iteration_name, row ) {
+        var deferred = Ext.create('Deft.Deferred');
+        
+        var iteration = row.get('Iteration');
+        
+        var filters = [];
+        if ( Ext.isEmpty(iteration) ) {
+            filters.push( { property:'ObjectID', value: -1 } );
+        } else {
+            var iteration_oid =  iteration.get('ObjectID');
+            var iteration_end = iteration.get('EndDate');
+            
+            filters.push({property:'__At',value:Rally.util.DateTime.toIsoString(iteration_end)});
+            filters.push({property:'Iteration',value:iteration_oid});
+            filters.push({property:'ScheduleState',operator:'>=',value:'Accepted'})
+        }
+        
+        var config = {
+            filters: filters,
+            fetch: ['ObjectID','PlanEstimate']
+        }
+        TSUtilities.loadLookbackRecords(config).then({
+            success: function(snapshots) {
+                Ext.Array.each(snapshots, function(snapshot){
+                    row.addToFinalDayAccepted(snapshot.get('PlanEstimate') || 0 );
+                });
+                
+                deferred.resolve(row);
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            },
+            scope: this
+        });
         return deferred.promise;
     },
     
@@ -180,12 +256,12 @@ Ext.define("TSIterationSummary", {
             fetch: ['Name','ObjectID','PlanEstimate','AcceptedDate','ScheduleState'],
             context: {
                 projectScopeUp: false,
-                projectScopeDown: true,
+                projectScopeDown: false,
                 project: row.get('_ref')
             }
         };
         
-        this._loadWsapiRecords(config).then({
+        TSUtilities.loadWsapiRecords(config).then({
             success: function(stories) {
                 Ext.Array.each(stories, function(story) {
                     row.addStory(story);
@@ -211,7 +287,7 @@ Ext.define("TSIterationSummary", {
                 sorters: [{property:'Name'}]
             };
         
-            return this._loadWsapiRecords(config);
+            return TSUtilities.loadWsapiRecords(config);
         } 
         
         return this._loadProgramsAndProjects(programs);
@@ -241,16 +317,16 @@ Ext.define("TSIterationSummary", {
             deferred = Ext.create('Deft.Deferred');
         
         if ( Ext.isString(programs) ) { programs = Ext.JSON.decode(programs); }
-
-        console.log('programs:', programs);
         
         programs = this._sortHashByProjectName(programs);
         
         var promises = [];
         Ext.Object.each(programs, function(ref, program){
+            program.Program = true;
+            var program_row = Ext.create('TSRow', program);
+            
             promises.push(function() {
-                program.Program = true;
-                return Ext.create('TSRow', program);
+                return program_row;
             });
             
             var config = {
@@ -260,13 +336,29 @@ Ext.define("TSIterationSummary", {
                 sorters: [{property:'Name'}]
             };
             promises.push(function() {
-                return me._loadWsapiRecords(config);
+                return TSUtilities.loadWsapiRecords(config);
             });
         });
         
         Deft.Chain.sequence(promises,this).then({
             success: function(results) {
-                deferred.resolve(Ext.Array.flatten(results));
+                var program = null;
+                var items = Ext.Array.flatten(results);
+                var rows = [];
+                
+                Ext.Array.each(items, function(result) {
+                    console.log(result);
+                    if (result.get('Program')) {
+                        program = result;
+                        rows.push(result);
+                    } else {
+                        var data = result.getData();
+                        data.Parent = program;
+                        var item = Ext.create('TSRow', data);
+                        rows.push(item);
+                    }
+                });
+                deferred.resolve(rows);
             },
             failure: function(msg) {
                 deferred.reject(msg);
@@ -275,32 +367,12 @@ Ext.define("TSIterationSummary", {
         
         return deferred;
     },
-      
-    _loadWsapiRecords: function(config){
-        var deferred = Ext.create('Deft.Deferred');
-        var me = this;
-        var default_config = {
-            model: 'Defect',
-            fetch: ['ObjectID']
-        };
-        this.logger.log("Starting load:",config.model);
-        Ext.create('Rally.data.wsapi.Store', Ext.Object.merge(default_config,config)).load({
-            callback : function(records, operation, successful) {
-                if (successful){
-                    deferred.resolve(records);
-                } else {
-                    me.logger.log("Failed: ", operation);
-                    deferred.reject('Problem loading: ' + operation.error.errors.join('. '));
-                }
-            }
-        });
-        return deferred.promise;
-    },
     
     _makeGrid: function(rows){
         var store = Ext.create('Rally.data.custom.Store',{data: rows});
         
         this.rows = rows;
+        console.log("Rows:", rows);
         
         this.logger.log("Made store, about to make grid", store);
         
@@ -346,7 +418,7 @@ Ext.define("TSIterationSummary", {
             columns: [{ 
                 text: 'Story Points',
                 columns: [
-                    { dataIndex:'Velocity', text: 'Sprint Velocity', draggable: false, hideable: false}
+                    { dataIndex:'_TotalFinalDayAccepted', text: 'Sprint Velocity (Last Day)', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,
@@ -362,7 +434,8 @@ Ext.define("TSIterationSummary", {
                 text: 'Story Points',
                 columns: [
                     { dataIndex:'_TotalPlannedVelocity', text:'Planned Velocity', draggable: false, hideable: false},
-                    { dataIndex:'_TotalPlanEstimate', text: 'Plan Estimate', draggable: false, hideable: false}
+                    //{ dataIndex:'_TotalPlanEstimate', text: 'Plan Estimate', draggable: false, hideable: false}
+                    { dataIndex:'_TotalFirstDayPlanEstimate', text: 'First Day Plan Estimate', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,
@@ -378,7 +451,7 @@ Ext.define("TSIterationSummary", {
             columns: [{ 
                 text: 'Story Count',
                 columns: [
-                    { dataIndex: 'TotalCount', text: 'Total Planned', csvText: 'Total Count', draggable: false, hideable: false},
+                    { dataIndex: 'TotalCount', text: 'Total Scheduled', csvText: 'Total Count', draggable: false, hideable: false},
                     { dataIndex: 'CompletedCount', text: 'Completed State', csvText: 'Completed Count', draggable: false, hideable: false},
                     { dataIndex: 'AcceptedCount', text:'Accepted State', csvText: 'Accepted Count', draggable: false, hideable: false}
                 ],
@@ -389,7 +462,7 @@ Ext.define("TSIterationSummary", {
             { 
                 text: 'Story Points',
                 columns: [
-                    { dataIndex: 'TotalSize', text:'Total Planned', csvText:'Total Size', draggable: false, hideable: false},
+                    { dataIndex: 'TotalSize', text:'Total Scheduled', csvText:'Total Size', draggable: false, hideable: false},
                     { dataIndex: 'CompletedSize', text: 'Completed State', csvText: 'Completed Size', draggable: false, hideable: false},
                     { dataIndex: 'AcceptedSize', text: 'Accepted State', csvText: 'Accepted Size', draggable: false, hideable: false}
                 ],
