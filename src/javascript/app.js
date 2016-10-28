@@ -122,7 +122,9 @@ Ext.define("TSIterationSummary", {
             function() { return me._gatherBaseIterationInformationForRow(iteration_name, row); },
             function() { return me._gatherFirstDayInformationForRow(iteration_name, row); },
             function() { return me._gatherLastDayInformationForRow(iteration_name, row); },
-            function() { return me._gatherStoriesInIterationForRow(iteration_name, row); }
+            function() { return me._gatherStoriesInIterationForRow(iteration_name, row); },
+            function() { return me._determineSpillOutPointsInIterationForRow(iteration_name, row); }
+
         ], this);
     },
     
@@ -335,7 +337,8 @@ Ext.define("TSIterationSummary", {
                 {property:'Iteration.Name',value:iteration_name}
             ],
             limit: Infinity,
-            fetch: ['Name','ObjectID','PlanEstimate','AcceptedDate','ScheduleState'],
+            fetch: ['Name','ObjectID','PlanEstimate','AcceptedDate',
+                'ScheduleState','CreationDate','Project'],
             context: {
                 projectScopeUp: false,
                 projectScopeDown: false,
@@ -352,6 +355,83 @@ Ext.define("TSIterationSummary", {
             },
             failure: function(msg) { deferred.reject(msg); },
             scope: this
+        });
+        
+        return deferred.promise;
+    },
+    
+    // assumes _gatherStoriesInIterationForRow already run
+    _determineSpillOutPointsInIterationForRow: function(iteration_name, row) {
+        var me = this,
+            deferred = Ext.create('Deft.Deferred');
+        var spill_out_stories = row.getSpillOutStories();
+        var promises = [];
+        Ext.Array.each( spill_out_stories, function(story){
+            promises.push(function() { return me._findSplitPlanEstimate(story); });
+        });
+        
+        if ( promises.length === 0 ) {
+            return row;
+        }
+        
+        Deft.Chain.sequence(promises,this).then({
+            success:  function(stories) {
+                console.log('stories that were spilled', stories);
+                
+                row.setSpilledOutStories(stories);
+                deferred.resolve(row);
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            }
+        });
+        
+        return deferred.promise;
+    },
+    
+    /*
+     * Guess plan estimate of original story before split by
+     * looking at the stories that have _validFrom around the 
+     * same time as the split story was created
+     */
+    _findSplitPlanEstimate: function(story){
+        var deferred = Ext.create('Deft.Deferred');
+        var time_variance = 2; // minutes
+        
+        console.log('_findSplitPlanEstimate', story);
+        if ( story.get('PlanEstimate') > 0 ) {
+            story.set('__OriginalPlanEstimate', story.get('PlanEstimate'));
+            return story;
+        }
+        
+        var timestamp = Rally.util.DateTime.fromIsoString(story.get('CreationDate'));
+        var lower_ts = Rally.util.DateTime.add(timestamp,'minute',-1 * time_variance);
+        var upper_ts = Rally.util.DateTime.add(timestamp,'minute',time_variance);
+        
+        var config = {
+            find: {
+                '_TypeHierarchy':'HierarchicalRequirement',
+                'Project': story.get('Project').ObjectID,
+                '_ValidFrom': {
+                    '$gt': Rally.util.DateTime.toIsoString(lower_ts),
+                    '$lt': Rally.util.DateTime.toIsoString(upper_ts)
+                }
+            },
+            fetch: ['ObjectID','PlanEstimate','_ValidFrom']
+        };
+        
+        TSUtilities.loadLookbackRecords(config).then({
+            success: function(snaps) {
+                Ext.Array.each(snaps,function(snap){
+                    if ( snap.get('PlanEstimate') > 0 ) {
+                        story.set('__OriginalPlanEstimate', snap.get('PlanEstimate'));
+                    }
+                });
+                deferred.resolve(story);
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            }
         });
         
         return deferred.promise;

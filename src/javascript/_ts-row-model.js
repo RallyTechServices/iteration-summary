@@ -70,6 +70,17 @@ Ext.define('TSRow',{
         
     },
     
+    getSpillOutStories: function() {
+        var me = this,
+            stories = this.get('Stories') || [];
+        
+        var spill_out_stories = Ext.Array.filter(stories, function(story){
+            return ( me.isSpillOut(story) ) ;
+        });
+        
+        return spill_out_stories;
+    },
+    
     addStory: function(story) { 
         var stories = this.get('Stories') || [];
         stories.push(story);
@@ -87,15 +98,15 @@ Ext.define('TSRow',{
             this.addToField('CompletedSize',size);
         }
         
-        if ( this._isSpillIn(story) ) {
+        if ( this.isSpillIn(story) ) {
             this.addToField('SpillInCount', 1);
             this.addToField('SpillInSize',size);
         }
-        if ( this._isSpillOut(story) ) {
-            this.addToField('SpillOutCount', 1);
-            this.addToField('SpillOutSize',size);
-        }
-        
+//        if ( this.isSpillOut(story) ) {
+//            this.addToField('SpillOutCount', 1);
+//            this.addToField('SpillOutSize',size);
+//        }
+//        
         this.addToField('TotalCount',1);
         this.addToField('TotalSize', size);
         this.addToField('_TotalPlanEstimate', size);
@@ -105,12 +116,23 @@ Ext.define('TSRow',{
         }
     },
     
-    _isSpillIn: function(record) {
+    setSpilledOutStories: function(stories){
+        var me = this;
+        Ext.Array.each(stories, function(story){
+            var size = story.get('__OriginalPlanEstimate') || 0;
+            console.log('adding to spill out size', size);
+            me.addToField('SpillOutCount', 1);
+            me.addToField('SpillOutSize',size);
+        });
+    },
+
+    isSpillIn: function(record) {
         var regex = new RegExp("^\\[Continued\\]", "i");
         return (regex.test(record.get('Name')) );
     },
     
-    _isSpillOut: function(record) {
+    
+    isSpillOut: function(record) {
         var regex = new RegExp("^\\[Unfinished\\]", "i");
         return (regex.test(record.get('Name')) );
     },
