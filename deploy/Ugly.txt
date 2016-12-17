@@ -3,10 +3,10 @@
 <head>
     <title>TS Iteration Summary</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Tue Sep 13 2016 16:53:56 GMT-0700 (PDT) -->
+    <!--  Build Date: Fri Dec 16 2016 17:30:52 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Sep 13 2016 16:53:56 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Fri Dec 16 2016 17:30:52 GMT-0700 (MST)";
         var CHECKSUM = [%= checksum %];
     </script>
     
@@ -24,7 +24,8 @@
     
     <style type="text/css">
 
-.app {
+.tsapp {
+    background: #fff;
 }
 .tsinfolink {
     position:absolute;

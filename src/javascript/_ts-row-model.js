@@ -59,7 +59,7 @@ Ext.define('TSRow',{
         var fields = ['_TotalLastDayAccepted','_TotalLastDayAcceptedMinus1','_TotalLastDayAcceptedMinus2'];
         var field = fields[iteration_index];
 
-        console.log('adding ', value, 'to', field, iteration_index);
+     //   console.log('adding ', value, 'to', field, iteration_index);
         
         var current = this.get(field) || 0;
         this.set(field, current + new_value );
@@ -77,7 +77,7 @@ Ext.define('TSRow',{
         var spill_out_stories = Ext.Array.filter(stories, function(story){
             return ( me.isSpillOut(story) ) ;
         });
-        
+     //   console.log('spill_out_stories', spill_out_stories);
         return spill_out_stories;
     },
     
@@ -120,7 +120,8 @@ Ext.define('TSRow',{
         var me = this;
         Ext.Array.each(stories, function(story){
             var size = story.get('__OriginalPlanEstimate') || 0;
-            console.log('adding to spill out size', size);
+       //     console.log('adding to spill out size', size);
+
             me.addToField('SpillOutCount', 1);
             me.addToField('SpillOutSize',size);
         });
@@ -134,6 +135,7 @@ Ext.define('TSRow',{
     
     isSpillOut: function(record) {
         var regex = new RegExp("^\\[Unfinished\\]", "i");
+    //    console.log('isSpillOut', record.get('Name'), regex.test(record.get('Name')), record.getData());
         return (regex.test(record.get('Name')) );
     },
     

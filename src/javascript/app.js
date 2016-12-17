@@ -74,7 +74,6 @@ Ext.define("TSIterationSummary", {
             }
         });
     },
-    
     _updateData: function() {
         this.down('#display_box').removeAll();
         if ( Ext.isEmpty(this.iteration_selector) ) {
@@ -292,10 +291,11 @@ Ext.define("TSIterationSummary", {
         
         Deft.Chain.sequence(promises,this).then({
             success: function(snapshot_groups) {
-                console.log('snapshot groups:', snapshot_groups);
+           //     /('snapshot groups:', snapshot_groups);
                 Ext.Array.each(snapshot_groups, function(snapshots,idx) {
                     Ext.Array.each(snapshots, function(snapshot){
-                        console.log('snapshot:', snapshot);
+                      //  console.log('snapshot:', snapshot, snapshot.get('FormattedID'), snapshot.get('PlanEstimate'));
+
                         row.addToFinalDayAccepted(snapshot.get('PlanEstimate') || 0 , idx);
                     });
                 });
@@ -324,11 +324,11 @@ Ext.define("TSIterationSummary", {
         
         var config = {
             filters: filters,
-            fetch: ['ObjectID','PlanEstimate']
+            fetch: ['ObjectID','PlanEstimate','FormattedID']
         }
         return TSUtilities.loadLookbackRecords(config);
     },
-    
+
     _gatherStoriesInIterationForRow: function( iteration_name, row ) {
         var deferred = Ext.create('Deft.Deferred');
         var config = {
@@ -365,6 +365,7 @@ Ext.define("TSIterationSummary", {
         var me = this,
             deferred = Ext.create('Deft.Deferred');
         var spill_out_stories = row.getSpillOutStories();
+
         var promises = [];
         Ext.Array.each( spill_out_stories, function(story){
             promises.push(function() { return me._findSplitPlanEstimate(story); });
@@ -376,7 +377,7 @@ Ext.define("TSIterationSummary", {
         
         Deft.Chain.sequence(promises,this).then({
             success:  function(stories) {
-                console.log('stories that were spilled', stories);
+              //  console.log('stories that were spilled', stories);
                 
                 row.setSpilledOutStories(stories);
                 deferred.resolve(row);
@@ -398,7 +399,7 @@ Ext.define("TSIterationSummary", {
         var deferred = Ext.create('Deft.Deferred');
         var time_variance = 2; // minutes
         
-        console.log('_findSplitPlanEstimate', story);
+      //  console.log('_findSplitPlanEstimate', story);
         if ( story.get('PlanEstimate') > 0 ) {
             story.set('__OriginalPlanEstimate', story.get('PlanEstimate'));
             return story;
@@ -407,9 +408,11 @@ Ext.define("TSIterationSummary", {
         var timestamp = Rally.util.DateTime.fromIsoString(story.get('CreationDate'));
         var lower_ts = Rally.util.DateTime.add(timestamp,'minute',-1 * time_variance);
         var upper_ts = Rally.util.DateTime.add(timestamp,'minute',time_variance);
+        var storyName = story.get('Name');
         
         var config = {
             find: {
+                //'ObjectID': story.get('ObjectID'),
                 '_TypeHierarchy':'HierarchicalRequirement',
                 'Project': story.get('Project').ObjectID,
                 '_ValidFrom': {
@@ -417,14 +420,16 @@ Ext.define("TSIterationSummary", {
                     '$lt': Rally.util.DateTime.toIsoString(upper_ts)
                 }
             },
-            fetch: ['ObjectID','PlanEstimate','_ValidFrom']
+            fetch: ['ObjectID','PlanEstimate','_ValidFrom','FormattedID','Name']
         };
         
         TSUtilities.loadLookbackRecords(config).then({
             success: function(snaps) {
                 Ext.Array.each(snaps,function(snap){
                     if ( snap.get('PlanEstimate') > 0 ) {
-                        story.set('__OriginalPlanEstimate', snap.get('PlanEstimate'));
+                        if (storyName.includes(snap.get('Name'))){
+                            story.set('__OriginalPlanEstimate', snap.get('PlanEstimate'));
+                        }
                     }
                 });
                 deferred.resolve(story);
@@ -509,7 +514,7 @@ Ext.define("TSIterationSummary", {
                 var rows = [];
                 
                 Ext.Array.each(items, function(result) {
-                    console.log(result);
+                  //  console.log(result);
                     if (result.get('Program')) {
                         program = result;
                         rows.push(result);
@@ -534,7 +539,7 @@ Ext.define("TSIterationSummary", {
         var store = Ext.create('Rally.data.custom.Store',{data: rows});
         
         this.rows = rows;
-        console.log("Rows:", rows);
+     //   console.log("Rows:", rows);
         
         this.logger.log("Made store, about to make grid", store);
         
