@@ -197,8 +197,8 @@ Ext.define("TSIterationSummary", {
         var config = {
             model: 'Iteration',
             filters: filters,
-            limit: 2,
-            pageSize: 2,
+            limit: 4,
+            pageSize: 4,
             fetch: ['Name','ObjectID','PlanEstimate','PlannedVelocity','ChildrenPlannedVelocity','StartDate','EndDate'],
             context: {
                 projectScopeUp: false,
@@ -210,8 +210,11 @@ Ext.define("TSIterationSummary", {
         
         TSUtilities.loadWsapiRecords(config).then({
             success: function(iterations) {
+
                 if ( iterations.length > 0 ) { row.set('IterationMinus1',iterations[0]); }
                 if ( iterations.length > 1 ) { row.set('IterationMinus2',iterations[1]); }
+                if ( iterations.length > 2 ) { row.set('IterationMinus3',iterations[2]); }
+                if ( iterations.length > 3 ) { row.set('IterationMinus4',iterations[3]); }
                 deferred.resolve(row);
             },
             failure: function(msg) {
@@ -277,13 +280,17 @@ Ext.define("TSIterationSummary", {
     _gatherLastDayInformationForRow: function(iteration_name, row ) {
         var deferred = Ext.create('Deft.Deferred');
         var me = this;
-        
-        var iteration = row.get('Iteration');
-        var iteration_minus_1 = row.get('IterationMinus1');
-        var iteration_minus_2 = row.get('IterationMinus2');
-        // 
+
+        var iterations = [
+            row.get('Iteration'),
+            row.get('IterationMinus1'),
+            row.get('IterationMinus2'),
+            row.get('IterationMinus3'),
+            row.get('IterationMinus4')
+        ];
+
         var promises = [];
-        Ext.Array.each([iteration,iteration_minus_1,iteration_minus_2],function(iteration){
+        Ext.Array.each(iterations,function(iteration){
             promises.push(function(){
                 return me._getLastDayInformationForIteration(iteration);
             });
@@ -291,15 +298,15 @@ Ext.define("TSIterationSummary", {
         
         Deft.Chain.sequence(promises,this).then({
             success: function(snapshot_groups) {
-           //     /('snapshot groups:', snapshot_groups);
+         //  console.log('snapshot groups:', snapshot_groups);
+
                 Ext.Array.each(snapshot_groups, function(snapshots,idx) {
                     Ext.Array.each(snapshots, function(snapshot){
-                      //  console.log('snapshot:', snapshot, snapshot.get('FormattedID'), snapshot.get('PlanEstimate'));
-
+                        //console.log('snapshot:', snapshot.get('PlanEstimate') || 0 , idx);
                         row.addToFinalDayAccepted(snapshot.get('PlanEstimate') || 0 , idx);
                     });
                 });
-                
+                row.updateAverageLastDayAccepted();
                 deferred.resolve(row);
             },
             failure: function(msg){
@@ -309,25 +316,49 @@ Ext.define("TSIterationSummary", {
         return deferred.promise;
     },
     
+    //_getLastDayInformationForIteration: function(iteration) {
+    //    var filters = [];
+    //    if ( Ext.isEmpty(iteration) ) {
+    //        filters.push( { property:'ObjectID', value: -1 } );
+    //    } else {
+    //        var iteration_oid =  iteration.get('ObjectID');
+    //        var iteration_end = iteration.get('EndDate');
+    //
+    //        filters.push({property:'__At',value:Rally.util.DateTime.toIsoString(iteration_end)});
+    //        filters.push({property:'Iteration',value:iteration_oid});
+    //        filters.push({property:'ScheduleState',operator:'>=',value:'Accepted'});
+    //    }
+    //
+    //    var config = {
+    //        filters: filters,
+    //        fetch: ['ObjectID','PlanEstimate','FormattedID']
+    //    };
+    //    return TSUtilities.loadLookbackRecords(config);
+    //},
     _getLastDayInformationForIteration: function(iteration) {
         var filters = [];
         if ( Ext.isEmpty(iteration) ) {
             filters.push( { property:'ObjectID', value: -1 } );
         } else {
             var iteration_oid =  iteration.get('ObjectID');
-            var iteration_end = iteration.get('EndDate');
-            
-            filters.push({property:'__At',value:Rally.util.DateTime.toIsoString(iteration_end)});
-            filters.push({property:'Iteration',value:iteration_oid});
-            filters.push({property:'ScheduleState',operator:'>=',value:'Accepted'});
+            var iteration_end = iteration.get('EndDate'),
+                iteration_start = iteration.get('StartDate');
+
+            //add this filter if we only want items that were accepted before the iteration end date.
+            //filters.push({property:'AcceptedDate', operator: '<', value:Rally.util.DateTime.toIsoString(iteration_end)});
+            filters.push({property:'AcceptedDate', operator: '>', value:Rally.util.DateTime.toIsoString(iteration_start)});
+            filters.push({property:'Iteration.ObjectID',value:iteration_oid});
         }
-        
+
         var config = {
             filters: filters,
-            fetch: ['ObjectID','PlanEstimate','FormattedID']
-        }
-        return TSUtilities.loadLookbackRecords(config);
+            fetch: ['ObjectID','PlanEstimate','FormattedID'],
+            model: 'HierarchicalRequirement',
+            context: {project: null}
+        };
+        return TSUtilities.loadWsapiRecords(config);
     },
+
 
     _gatherStoriesInIterationForRow: function( iteration_name, row ) {
         var deferred = Ext.create('Deft.Deferred');
@@ -585,9 +616,9 @@ Ext.define("TSIterationSummary", {
             columns: [{ 
                 text: 'Story Points',
                 columns: [
-                    { dataIndex:'_TotalLastDayAccepted', text: 'Sprint Velocity (Last Day)', draggable: false, hideable: false},
-                    { dataIndex:'_TotalLastDayAcceptedMinus1', text: 'Sprint -1 Velocity (Last Day)', draggable: false, hideable: false},
-                    { dataIndex:'_TotalLastDayAcceptedMinus2', text: 'Sprint -2 Velocity (Last Day)', draggable: false, hideable: false}
+                    { dataIndex:'_AverageLastDayAccepted', text: 'Sprint Velocity (Last Day)', draggable: false, hideable: false},
+                    { dataIndex:'_AverageLastDayAcceptedMinus1', text: 'Sprint -1 Velocity (Last Day)', draggable: false, hideable: false},
+                    { dataIndex:'_AverageLastDayAcceptedMinus2', text: 'Sprint -2 Velocity (Last Day)', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,
@@ -670,7 +701,6 @@ Ext.define("TSIterationSummary", {
             sortable: false
         }];
     },
-    
     getSettingsFields: function() {
         var me = this;
         

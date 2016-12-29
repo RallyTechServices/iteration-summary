@@ -3,10 +3,10 @@
 <head>
     <title>TS Iteration Summary</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Fri Dec 16 2016 17:30:52 GMT-0700 (MST) -->
+    <!--  Build Date: Wed Dec 28 2016 20:34:13 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Dec 16 2016 17:30:52 GMT-0700 (MST)";
+        var APP_BUILD_DATE = "Wed Dec 28 2016 20:34:13 GMT-0700 (MST)";
         var CHECKSUM = [%= checksum %];
     </script>
     

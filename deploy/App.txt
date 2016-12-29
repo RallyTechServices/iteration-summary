@@ -3,13 +3,13 @@
 <head>
     <title>TS Iteration Summary</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Fri Dec 16 2016 17:30:51 GMT-0700 (MST) -->
+    <!--  Build Date: Wed Dec 28 2016 20:34:13 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Dec 16 2016 17:30:51 GMT-0700 (MST)";
+        var APP_BUILD_DATE = "Wed Dec 28 2016 20:34:13 GMT-0700 (MST)";
         var STORY    = "US676";
         var BUILDER  = "kcorkan";
-        var CHECKSUM = 145938714132;
+        var CHECKSUM = 157222274732;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -1730,17 +1730,25 @@ Ext.define('TSRow',{
         { name: 'Iteration', type:'object'},
         { name: 'IterationMinus1', type:'object'},
         { name: 'IterationMinus2', type:'object'},
+        { name: 'IterationMinus3', type:'object'},
+        { name: 'IterationMinus4', type:'object'},
         
         { name: '_TotalPlannedVelocity', type: 'number', defaultValue: 0},  // rolled up
         { name: '_TotalPlanEstimate', type: 'number', defaultValue: 0}, // rolled up
         { name: '_TotalFirstDayPlanEstimate', type: 'number', defaultValue: 0},
         { name: '_TotalFirstDayPlanEstimateMinus1', type: 'number', defaultValue: 0},
         { name: '_TotalFirstDayPlanEstimateMinus2', type: 'number', defaultValue: 0},
-        
+
         { name: '_TotalLastDayAccepted', type:'number', defaultValue: 0 }, // rolled up
         { name: '_TotalLastDayAcceptedMinus1', type:'number', defaultValue: 0 }, // rolled up
         { name: '_TotalLastDayAcceptedMinus2', type:'number', defaultValue: 0 }, // rolled up
-        
+        { name: '_TotalLastDayAcceptedMinus3', type:'number', defaultValue: 0 }, // rolled up
+        { name: '_TotalLastDayAcceptedMinus4', type:'number', defaultValue: 0 }, // rolled up
+
+        { name: '_AverageLastDayAccepted', defaultValue: 0, type: 'number' },
+        { name: '_AverageLastDayAcceptedMinus1', defaultValue: 0, type: 'number'},
+        { name: '_AverageLastDayAcceptedMinus2', defaultValue: 0, type: 'number'},
+
         { name: 'TotalCount', type: 'number', defaultValue: 0},
         { name: 'AcceptedCount', type: 'number', defaultValue: 0},
         { name: 'CompletedCount', type:'number', defaultValue: 0},
@@ -1768,17 +1776,36 @@ Ext.define('TSRow',{
         }
         
     },
-    
+    updateAverageLastDayAccepted: function(){
+
+        var fields = ['_TotalLastDayAccepted','_TotalLastDayAcceptedMinus1','_TotalLastDayAcceptedMinus2','_TotalLastDayAcceptedMinus3','_TotalLastDayAcceptedMinus4'],
+            iterations = ['Iteration','IterationMinus1','IterationMinus2','IterationMinus3','IterationMinus4'],
+            averageFields = ['_AverageLastDayAccepted','_AverageLastDayAcceptedMinus1','_AverageLastDayAcceptedMinus2'];
+        var avg = [];
+
+        for (var i=0; i<3; i++){
+            avg[i] = [];
+            for (var j=i; j<i+3; j++){
+                if (this.get(iterations[j])){
+                    avg[i].push(this.get(fields[j]));
+                }
+            }
+         //   console.log('avg', fields[i], avg[i], Ext.Array.mean(avg[i]));
+
+            if (avg[i].length > 0){
+                this.set(averageFields[i],Math.round(Ext.Array.mean(avg[i])));
+            }
+        }
+    },
     addToFinalDayAccepted: function(value,iteration_index) {
         var new_value = value || 0;
-        var fields = ['_TotalLastDayAccepted','_TotalLastDayAcceptedMinus1','_TotalLastDayAcceptedMinus2'];
+        var fields = ['_TotalLastDayAccepted','_TotalLastDayAcceptedMinus1','_TotalLastDayAcceptedMinus2','_TotalLastDayAcceptedMinus3','_TotalLastDayAcceptedMinus4'];
         var field = fields[iteration_index];
 
-     //   console.log('adding ', value, 'to', field, iteration_index);
-        
+
         var current = this.get(field) || 0;
         this.set(field, current + new_value );
-        
+
         if ( this.get('Parent') ) {
             this.get('Parent').addToFinalDayAccepted(value,iteration_index); 
         }
@@ -1792,7 +1819,6 @@ Ext.define('TSRow',{
         var spill_out_stories = Ext.Array.filter(stories, function(story){
             return ( me.isSpillOut(story) ) ;
         });
-     //   console.log('spill_out_stories', spill_out_stories);
         return spill_out_stories;
     },
     
@@ -1835,7 +1861,6 @@ Ext.define('TSRow',{
         var me = this;
         Ext.Array.each(stories, function(story){
             var size = story.get('__OriginalPlanEstimate') || 0;
-       //     console.log('adding to spill out size', size);
 
             me.addToField('SpillOutCount', 1);
             me.addToField('SpillOutSize',size);
@@ -1866,10 +1891,10 @@ Ext.define('TSRow',{
             
             '_TotalPlannedVelocity','_TotalPlanEstimate',
             '_TotalFirstDayPlanEstimate','_TotalFirstDayPlanEstimateMinus1','_TotalFirstDayPlanEstimateMinus2',
-            '_TotalLastDayAccepted','_TotalLastDayAcceptedMinus1','_TotalLastDayAcceptedMinus2'
+            '_TotalLastDayAccepted','_TotalLastDayAcceptedMinus1','_TotalLastDayAcceptedMinus2','_TotalLastDayAcceptedMinus3','_TotalLastDayAcceptedMinus4',
+            '_AverageLastDayAccepted','_AverageLastDayAcceptedMinus1','_AverageLastDayAcceptedMinus2'
         ];
-        
-        
+
         this.set('Stories',[]);
         
         Ext.Array.each(changeable_fields, function(field_name) {
@@ -2076,8 +2101,8 @@ Ext.define("TSIterationSummary", {
         var config = {
             model: 'Iteration',
             filters: filters,
-            limit: 2,
-            pageSize: 2,
+            limit: 4,
+            pageSize: 4,
             fetch: ['Name','ObjectID','PlanEstimate','PlannedVelocity','ChildrenPlannedVelocity','StartDate','EndDate'],
             context: {
                 projectScopeUp: false,
@@ -2089,8 +2114,11 @@ Ext.define("TSIterationSummary", {
         
         TSUtilities.loadWsapiRecords(config).then({
             success: function(iterations) {
+
                 if ( iterations.length > 0 ) { row.set('IterationMinus1',iterations[0]); }
                 if ( iterations.length > 1 ) { row.set('IterationMinus2',iterations[1]); }
+                if ( iterations.length > 2 ) { row.set('IterationMinus3',iterations[2]); }
+                if ( iterations.length > 3 ) { row.set('IterationMinus4',iterations[3]); }
                 deferred.resolve(row);
             },
             failure: function(msg) {
@@ -2156,13 +2184,17 @@ Ext.define("TSIterationSummary", {
     _gatherLastDayInformationForRow: function(iteration_name, row ) {
         var deferred = Ext.create('Deft.Deferred');
         var me = this;
-        
-        var iteration = row.get('Iteration');
-        var iteration_minus_1 = row.get('IterationMinus1');
-        var iteration_minus_2 = row.get('IterationMinus2');
-        // 
+
+        var iterations = [
+            row.get('Iteration'),
+            row.get('IterationMinus1'),
+            row.get('IterationMinus2'),
+            row.get('IterationMinus3'),
+            row.get('IterationMinus4')
+        ];
+
         var promises = [];
-        Ext.Array.each([iteration,iteration_minus_1,iteration_minus_2],function(iteration){
+        Ext.Array.each(iterations,function(iteration){
             promises.push(function(){
                 return me._getLastDayInformationForIteration(iteration);
             });
@@ -2170,15 +2202,15 @@ Ext.define("TSIterationSummary", {
         
         Deft.Chain.sequence(promises,this).then({
             success: function(snapshot_groups) {
-           //     /('snapshot groups:', snapshot_groups);
+         //  console.log('snapshot groups:', snapshot_groups);
+
                 Ext.Array.each(snapshot_groups, function(snapshots,idx) {
                     Ext.Array.each(snapshots, function(snapshot){
-                      //  console.log('snapshot:', snapshot, snapshot.get('FormattedID'), snapshot.get('PlanEstimate'));
-
+                        //console.log('snapshot:', snapshot.get('PlanEstimate') || 0 , idx);
                         row.addToFinalDayAccepted(snapshot.get('PlanEstimate') || 0 , idx);
                     });
                 });
-                
+                row.updateAverageLastDayAccepted();
                 deferred.resolve(row);
             },
             failure: function(msg){
@@ -2188,25 +2220,49 @@ Ext.define("TSIterationSummary", {
         return deferred.promise;
     },
     
+    //_getLastDayInformationForIteration: function(iteration) {
+    //    var filters = [];
+    //    if ( Ext.isEmpty(iteration) ) {
+    //        filters.push( { property:'ObjectID', value: -1 } );
+    //    } else {
+    //        var iteration_oid =  iteration.get('ObjectID');
+    //        var iteration_end = iteration.get('EndDate');
+    //
+    //        filters.push({property:'__At',value:Rally.util.DateTime.toIsoString(iteration_end)});
+    //        filters.push({property:'Iteration',value:iteration_oid});
+    //        filters.push({property:'ScheduleState',operator:'>=',value:'Accepted'});
+    //    }
+    //
+    //    var config = {
+    //        filters: filters,
+    //        fetch: ['ObjectID','PlanEstimate','FormattedID']
+    //    };
+    //    return TSUtilities.loadLookbackRecords(config);
+    //},
     _getLastDayInformationForIteration: function(iteration) {
         var filters = [];
         if ( Ext.isEmpty(iteration) ) {
             filters.push( { property:'ObjectID', value: -1 } );
         } else {
             var iteration_oid =  iteration.get('ObjectID');
-            var iteration_end = iteration.get('EndDate');
-            
-            filters.push({property:'__At',value:Rally.util.DateTime.toIsoString(iteration_end)});
-            filters.push({property:'Iteration',value:iteration_oid});
-            filters.push({property:'ScheduleState',operator:'>=',value:'Accepted'});
+            var iteration_end = iteration.get('EndDate'),
+                iteration_start = iteration.get('StartDate');
+
+            //add this filter if we only want items that were accepted before the iteration end date.
+            //filters.push({property:'AcceptedDate', operator: '<', value:Rally.util.DateTime.toIsoString(iteration_end)});
+            filters.push({property:'AcceptedDate', operator: '>', value:Rally.util.DateTime.toIsoString(iteration_start)});
+            filters.push({property:'Iteration.ObjectID',value:iteration_oid});
         }
-        
+
         var config = {
             filters: filters,
-            fetch: ['ObjectID','PlanEstimate','FormattedID']
-        }
-        return TSUtilities.loadLookbackRecords(config);
+            fetch: ['ObjectID','PlanEstimate','FormattedID'],
+            model: 'HierarchicalRequirement',
+            context: {project: null}
+        };
+        return TSUtilities.loadWsapiRecords(config);
     },
+
 
     _gatherStoriesInIterationForRow: function( iteration_name, row ) {
         var deferred = Ext.create('Deft.Deferred');
@@ -2464,9 +2520,9 @@ Ext.define("TSIterationSummary", {
             columns: [{ 
                 text: 'Story Points',
                 columns: [
-                    { dataIndex:'_TotalLastDayAccepted', text: 'Sprint Velocity (Last Day)', draggable: false, hideable: false},
-                    { dataIndex:'_TotalLastDayAcceptedMinus1', text: 'Sprint -1 Velocity (Last Day)', draggable: false, hideable: false},
-                    { dataIndex:'_TotalLastDayAcceptedMinus2', text: 'Sprint -2 Velocity (Last Day)', draggable: false, hideable: false}
+                    { dataIndex:'_AverageLastDayAccepted', text: 'Sprint Velocity (Last Day)', draggable: false, hideable: false},
+                    { dataIndex:'_AverageLastDayAcceptedMinus1', text: 'Sprint -1 Velocity (Last Day)', draggable: false, hideable: false},
+                    { dataIndex:'_AverageLastDayAcceptedMinus2', text: 'Sprint -2 Velocity (Last Day)', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,
@@ -2549,7 +2605,6 @@ Ext.define("TSIterationSummary", {
             sortable: false
         }];
     },
-    
     getSettingsFields: function() {
         var me = this;
         
