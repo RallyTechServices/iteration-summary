@@ -197,8 +197,8 @@ Ext.define("TSIterationSummary", {
         var config = {
             model: 'Iteration',
             filters: filters,
-            limit: 4,
-            pageSize: 4,
+            limit: 2, //4,
+            pageSize: 2, // 4,
             fetch: ['Name','ObjectID','PlanEstimate','PlannedVelocity','ChildrenPlannedVelocity','StartDate','EndDate'],
             context: {
                 projectScopeUp: false,
@@ -213,8 +213,8 @@ Ext.define("TSIterationSummary", {
 
                 if ( iterations.length > 0 ) { row.set('IterationMinus1',iterations[0]); }
                 if ( iterations.length > 1 ) { row.set('IterationMinus2',iterations[1]); }
-                if ( iterations.length > 2 ) { row.set('IterationMinus3',iterations[2]); }
-                if ( iterations.length > 3 ) { row.set('IterationMinus4',iterations[3]); }
+               // if ( iterations.length > 2 ) { row.set('IterationMinus3',iterations[2]); }
+               // if ( iterations.length > 3 ) { row.set('IterationMinus4',iterations[3]); }
                 deferred.resolve(row);
             },
             failure: function(msg) {
@@ -616,9 +616,10 @@ Ext.define("TSIterationSummary", {
             columns: [{ 
                 text: 'Story Points',
                 columns: [
-                    { dataIndex:'_AverageLastDayAccepted', text: 'Sprint Velocity (Last Day)', draggable: false, hideable: false},
-                    { dataIndex:'_AverageLastDayAcceptedMinus1', text: 'Sprint -1 Velocity (Last Day)', draggable: false, hideable: false},
-                    { dataIndex:'_AverageLastDayAcceptedMinus2', text: 'Sprint -2 Velocity (Last Day)', draggable: false, hideable: false}
+                    { dataIndex:'_AverageLastDayAccepted', text: 'Average of Last 3 Sprints', draggable: false, hideable: false}
+                    //kc - uncomment to show average for last 3
+                    //{ dataIndex:'_AverageLastDayAcceptedMinus1', text: 'Sprint -1 Velocity (Last Day)', draggable: false, hideable: false},
+                    //{ dataIndex:'_AverageLastDayAcceptedMinus2', text: 'Sprint -2 Velocity (Last Day)', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,
