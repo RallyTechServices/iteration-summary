@@ -10,6 +10,8 @@
 
 * This app attempts to determine the size of the spilled-out stories by finding the points of snapshots with _ValidFrom within 2 minutes of the creation of each spilled-out story -- IF the story that remains in the sprint has no points.  (This is necessary for points, because when splitting, the original story is moved out and a new one is put in its place.  Many organizations will zero out the points on the Unfinished story that stays behind so it doesn't get double counted in release burn downs.  There are still edge cases for missing the data, but this is close.)
 
+
+
 ![settings](./images/settings.png "settings")
 
 ### First Load
