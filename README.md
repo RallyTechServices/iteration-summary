@@ -1,5 +1,20 @@
 #TS Iteration Summary
 
+Actual Velocity is any stories that are currently associated with the sprint that were Accepted before the sprint end.  
+
+
+Spill-Over
+For the selected sprint, the app retrieves the current set of stories that are associated with it through the WSAPI interface.  
+
+
+Spill-Over Out
+A story is considered a "Spill-out" story if it begins with "[Unfinished]" and is currently associated with the selected sprint.  To get the value of the spill over story points, we retrieve the corresponding spilled out record by looking for the story with the same name as the [Unfinished] story only replaced with [Continued].  
+The plan estimate for that story is used as the spill out number.  
+
+Spill-Over In
+A story is considered a "Spill-in" story if it begins with "[Continued]" and is currently associated with the sprint.  To get the value of the spill-in story points, we use the current plan estimate for that story.  
+
+
 ## Development Notes
 
 
