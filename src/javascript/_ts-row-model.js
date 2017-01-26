@@ -13,26 +13,26 @@ Ext.define('TSRow',{
         { name: 'PlannedVelocity', type:'number'}, // filled out on the sprint
         { name: 'ChildrenPlannedVelocity', type:'number'},
         { name: 'Iteration', type:'object'},
-        { name: 'IterationMinus1', type:'object'},
-        { name: 'IterationMinus2', type:'object'},
-        { name: 'IterationMinus3', type:'object'},
-        { name: 'IterationMinus4', type:'object'},
+        //{ name: 'IterationMinus1', type:'object'},
+        //{ name: 'IterationMinus2', type:'object'},
+        //{ name: 'IterationMinus3', type:'object'},
+        //{ name: 'IterationMinus4', type:'object'},
         
         { name: '_TotalPlannedVelocity', type: 'number', defaultValue: 0},  // rolled up
         { name: '_TotalPlanEstimate', type: 'number', defaultValue: 0}, // rolled up
         { name: '_TotalFirstDayPlanEstimate', type: 'number', defaultValue: 0},
-        { name: '_TotalFirstDayPlanEstimateMinus1', type: 'number', defaultValue: 0},
-        { name: '_TotalFirstDayPlanEstimateMinus2', type: 'number', defaultValue: 0},
+        //{ name: '_TotalFirstDayPlanEstimateMinus1', type: 'number', defaultValue: 0},
+        //{ name: '_TotalFirstDayPlanEstimateMinus2', type: 'number', defaultValue: 0},
 
         { name: '_TotalLastDayAccepted', type:'number', defaultValue: 0 }, // rolled up
-        { name: '_TotalLastDayAcceptedMinus1', type:'number', defaultValue: 0 }, // rolled up
-        { name: '_TotalLastDayAcceptedMinus2', type:'number', defaultValue: 0 }, // rolled up
-        { name: '_TotalLastDayAcceptedMinus3', type:'number', defaultValue: 0 }, // rolled up
-        { name: '_TotalLastDayAcceptedMinus4', type:'number', defaultValue: 0 }, // rolled up
+        //{ name: '_TotalLastDayAcceptedMinus1', type:'number', defaultValue: 0 }, // rolled up
+        //{ name: '_TotalLastDayAcceptedMinus2', type:'number', defaultValue: 0 }, // rolled up
+        //{ name: '_TotalLastDayAcceptedMinus3', type:'number', defaultValue: 0 }, // rolled up
+        //{ name: '_TotalLastDayAcceptedMinus4', type:'number', defaultValue: 0 }, // rolled up
 
         { name: '_AverageLastDayAccepted', defaultValue: 0, type: 'number' },
-        { name: '_AverageLastDayAcceptedMinus1', defaultValue: 0, type: 'number'},
-        { name: '_AverageLastDayAcceptedMinus2', defaultValue: 0, type: 'number'},
+        //{ name: '_AverageLastDayAcceptedMinus1', defaultValue: 0, type: 'number'},
+        //{ name: '_AverageLastDayAcceptedMinus2', defaultValue: 0, type: 'number'},
 
         { name: 'TotalCount', type: 'number', defaultValue: 0},
         { name: 'AcceptedCount', type: 'number', defaultValue: 0},
@@ -63,28 +63,31 @@ Ext.define('TSRow',{
     },
     updateAverageLastDayAccepted: function(){
 
-        var fields = ['_TotalLastDayAccepted','_TotalLastDayAcceptedMinus1','_TotalLastDayAcceptedMinus2','_TotalLastDayAcceptedMinus3','_TotalLastDayAcceptedMinus4'],
-            iterations = ['Iteration','IterationMinus1','IterationMinus2','IterationMinus3','IterationMinus4'],
-            averageFields = ['_AverageLastDayAccepted','_AverageLastDayAcceptedMinus1','_AverageLastDayAcceptedMinus2'];
+        var fields = ['_TotalLastDayAccepted'], //'_TotalLastDayAcceptedMinus1','_TotalLastDayAcceptedMinus2','_TotalLastDayAcceptedMinus3','_TotalLastDayAcceptedMinus4'],
+            iterations = ['Iteration'], //'IterationMinus1','IterationMinus2','IterationMinus3','IterationMinus4'],
+            averageFields = ['_AverageLastDayAccepted']; //,'_AverageLastDayAcceptedMinus1','_AverageLastDayAcceptedMinus2'];
         var avg = [];
 
-        for (var i=0; i<3; i++){
-            avg[i] = [];
-            for (var j=i; j<i+3; j++){
-                if (this.get(iterations[j])){
-                    avg[i].push(this.get(fields[j]));
-                }
-            }
-         //   console.log('avg', fields[i], avg[i], Ext.Array.mean(avg[i]));
+        this.set('_AverageLastDayAccepted', this.get('_TotalLastDayAccepted'));
 
-            if (avg[i].length > 0){
-                this.set(averageFields[i],Math.round(Ext.Array.mean(avg[i])));
-            }
-        }
+        //
+        //for (var i=0; i<3; i++){
+        //    avg[i] = [];
+        //    for (var j=i; j<i+3; j++){
+        //        if (this.get(iterations[j])){
+        //            avg[i].push(this.get(fields[j]));
+        //        }
+        //    }
+        // //   console.log('avg', fields[i], avg[i], Ext.Array.mean(avg[i]));
+        //
+        //    if (avg[i].length > 0){
+        //        this.set(averageFields[i],Math.round(Ext.Array.mean(avg[i])));
+        //    }
+        //}
     },
     addToFinalDayAccepted: function(value,iteration_index) {
         var new_value = value || 0;
-        var fields = ['_TotalLastDayAccepted','_TotalLastDayAcceptedMinus1','_TotalLastDayAcceptedMinus2','_TotalLastDayAcceptedMinus3','_TotalLastDayAcceptedMinus4'];
+        var fields = ['_TotalLastDayAccepted']; //,'_TotalLastDayAcceptedMinus1','_TotalLastDayAcceptedMinus2','_TotalLastDayAcceptedMinus3','_TotalLastDayAcceptedMinus4'];
         var field = fields[iteration_index];
 
 
