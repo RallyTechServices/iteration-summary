@@ -333,48 +333,48 @@ Ext.define("TSIterationSummary", {
         return deferred.promise;
     },
     
-    //_getLastDayInformationForIteration: function(iteration) {
-    //    var filters = [];
-    //    if ( Ext.isEmpty(iteration) ) {
-    //        filters.push( { property:'ObjectID', value: -1 } );
-    //    } else {
-    //        var iteration_oid =  iteration.get('ObjectID');
-    //        var iteration_end = iteration.get('EndDate');
-    //
-    //        filters.push({property:'__At',value:Rally.util.DateTime.toIsoString(iteration_end)});
-    //        filters.push({property:'Iteration',value:iteration_oid});
-    //        filters.push({property:'ScheduleState',operator:'>=',value:'Accepted'});
-    //    }
-    //
-    //    var config = {
-    //        filters: filters,
-    //        fetch: ['ObjectID','PlanEstimate','FormattedID']
-    //    };
-    //    return TSUtilities.loadLookbackRecords(config);
-    //},
     _getLastDayInformationForIteration: function(iteration) {
         var filters = [];
         if ( Ext.isEmpty(iteration) ) {
             filters.push( { property:'ObjectID', value: -1 } );
         } else {
             var iteration_oid =  iteration.get('ObjectID');
-            var iteration_end = iteration.get('EndDate'),
-                iteration_start = iteration.get('StartDate');
+            var iteration_end = iteration.get('EndDate');
 
-            //add this filter if we only want items that were accepted before the iteration end date.
-            //filters.push({property:'AcceptedDate', operator: '<', value:Rally.util.DateTime.toIsoString(iteration_end)});
-            filters.push({property:'AcceptedDate', operator: '>', value:Rally.util.DateTime.toIsoString(iteration_start)});
-            filters.push({property:'Iteration.ObjectID',value:iteration_oid});
+            filters.push({property:'__At',value:Rally.util.DateTime.toIsoString(iteration_end)});
+            filters.push({property:'Iteration',value:iteration_oid});
+            filters.push({property:'ScheduleState',operator:'>=',value:'Accepted'});
         }
 
         var config = {
             filters: filters,
-            fetch: ['ObjectID','PlanEstimate','FormattedID'],
-            model: 'HierarchicalRequirement',
-            context: {project: null}
+            fetch: ['ObjectID','PlanEstimate','FormattedID']
         };
-        return TSUtilities.loadWsapiRecords(config);
+        return TSUtilities.loadLookbackRecords(config);
     },
+    //_getLastDayInformationForIteration: function(iteration) {
+    //    var filters = [];
+    //    if ( Ext.isEmpty(iteration) ) {
+    //        filters.push( { property:'ObjectID', value: -1 } );
+    //    } else {
+    //        var iteration_oid =  iteration.get('ObjectID');
+    //        var iteration_end = iteration.get('EndDate'),
+    //            iteration_start = iteration.get('StartDate');
+    //
+    //        //add this filter if we only want items that were accepted before the iteration end date.
+    //        //filters.push({property:'AcceptedDate', operator: '<', value:Rally.util.DateTime.toIsoString(iteration_end)});
+    //        filters.push({property:'AcceptedDate', operator: '>', value:Rally.util.DateTime.toIsoString(iteration_start)});
+    //        filters.push({property:'Iteration.ObjectID',value:iteration_oid});
+    //    }
+    //
+    //    var config = {
+    //        filters: filters,
+    //        fetch: ['ObjectID','PlanEstimate','FormattedID'],
+    //        model: 'HierarchicalRequirement',
+    //        context: {project: null}
+    //    };
+    //    return TSUtilities.loadWsapiRecords(config);
+    //},
 
 
     _gatherStoriesInIterationForRow: function( iteration_name, row ) {
@@ -597,12 +597,25 @@ Ext.define("TSIterationSummary", {
             xtype: 'rallygrid',
             store: store,
             columnCfgs: this._getColumns(),
-            showRowActionsColumn: false
+            showRowActionsColumn: false,
+            viewConfig: {
+                listeners: {
+                    cellclick: this.showDetails,
+                    scope: this
+                }
+            }
         });
         
         this.down('#export_button').setDisabled(false);
     },
-    
+    showDetails: function(view, cell, cellIndex, record) {
+        this.logger.log('showDetails', view, record);
+
+        var clickedDataIndex = view.panel.headerCt.getHeaderAtIndex(cellIndex).dataIndex;
+        var cellValue = record.get(clickedDataIndex);
+
+        this.logger.log('showDetails', cellValue, record.get('Stories'));
+    },
     _getColumns: function() {
         return [
         { 
