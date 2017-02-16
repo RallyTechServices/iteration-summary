@@ -3,13 +3,13 @@
 <head>
     <title>TS Iteration Summary</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Wed Feb 15 2017 14:52:21 GMT-0700 (MST) -->
+    <!--  Build Date: Thu Feb 16 2017 16:55:00 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Feb 15 2017 14:52:21 GMT-0700 (MST)";
+        var APP_BUILD_DATE = "Thu Feb 16 2017 16:55:00 GMT-0700 (MST)";
         var STORY    = "US676";
         var BUILDER  = "kcorkan";
-        var CHECKSUM = 166802880508;
+        var CHECKSUM = 166802887134;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
