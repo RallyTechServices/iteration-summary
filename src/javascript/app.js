@@ -117,13 +117,23 @@ Ext.define("TSIterationSummary", {
     
     _gatherIterationInformationForRow: function(iteration_name,row){
         var me = this;
-        return Deft.Chain.sequence([
-            function() { return me._gatherBaseIterationInformationForRow(iteration_name, row); },
-            function() { return me._gatherFirstDayInformationForRow(iteration_name, row); },
-            function() { return me._gatherLastDayInformationForRow(iteration_name, row); },
-            function() { return me._gatherStoriesInIterationForRow(iteration_name, row); },
-            function() { return me._determineSpillOutPointsInIterationForRow(iteration_name, row); }
+
+        //return Deft.Chain.sequence([
+        //    function(){ return me._gatherBaseIterationInformationForRow(iteration_name, row); },
+        //    function(){ return me._gatherFirstDayInformationForRow(iteration_name, row); },
+        //    function(){ return me._gatherLastDayInformationForRow(iteration_name, row); },
+        //    function(){ return me._gatherStoriesInIterationForRow(iteration_name, row); },
+        //    function(){ return me._determineSpillOutPointsInIterationForRow(iteration_name, row); }
+        //], this);
+
+        return Deft.Promise.all([
+            me._gatherBaseIterationInformationForRow(iteration_name, row),
+            me._gatherFirstDayInformationForRow(iteration_name, row),
+            me._gatherLastDayInformationForRow(iteration_name, row),
+            me._gatherStoriesInIterationForRow(iteration_name, row),
+            me._determineSpillOutPointsInIterationForRow(iteration_name, row)
         ], this);
+
     },
     
     _gatherBaseIterationInformationForRow: function(iteration_name,row) {
@@ -236,13 +246,15 @@ Ext.define("TSIterationSummary", {
         // 
         var promises = [];
         Ext.Array.each([iteration,iteration_minus_1,iteration_minus_2],function(iteration){
-            promises.push(function(){
-                return me._getFirstDayInformationForIteration(iteration);
-            });
+            //promises.push(function(){
+            //    return me._getFirstDayInformationForIteration(iteration);
+            //});
+            promises.push(me._getFirstDayInformationForIteration(iteration));
         });
         
-        Deft.Chain.sequence(promises,this).then({
-            success: function(snapshot_groups) {
+        //Deft.Chain.sequence(promises,this).then({
+        Deft.Promise.all(promises,this).then({
+        success: function(snapshot_groups) {
                 Ext.Array.each(snapshot_groups, function(snapshots,idx) {
                     Ext.Array.each(snapshots, function(snapshot){
                         row.addToInitialPlanEstimate(snapshot.get('PlanEstimate') || 0 , idx);
@@ -418,14 +430,16 @@ Ext.define("TSIterationSummary", {
 
         var promises = [];
         Ext.Array.each( spill_out_stories, function(story){
-            promises.push(function() { return me._findSplitPlanEstimate(story); });
+            //promises.push(function() { return me._findSplitPlanEstimate(story); });
+            promises.push(me._findSplitPlanEstimate(story));
         });
         
         if ( promises.length === 0 ) {
             return row;
         }
         
-        Deft.Chain.sequence(promises,this).then({
+        //Deft.Chain.sequence(promises,this).then({
+        Deft.Promise.all(promises, this).then({
             success:  function(stories) {
               //  console.log('stories that were spilled', stories);
                 
