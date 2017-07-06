@@ -293,30 +293,12 @@ Ext.define("TSIterationSummary", {
     _gatherLastDayInformationForRow: function(iteration_name, row ) {
         var deferred = Ext.create('Deft.Deferred');
 
-        // this._getLastDayInformationForIteration(row.get('Iteration')).then({
-        //     success: function(snapshots) {
-        //         this.logger.log('_getLastDayInformationForIteration success', snapshots);
-        //         Ext.Array.each(snapshots, function(snapshot){
-        //             //console.log('snapshot:', snapshot.get('PlanEstimate') || 0 , idx);
-        //             row.addToFinalDayAccepted(snapshot.get('PlanEstimate') || 0 , 0);
-        //         });
-        //         row.updateAverageLastDayAccepted();
-        //         deferred.resolve(row);
-        //     },
-        //     failure: function(msg){
-        //         deferred.reject(msg);
-        //     },
-        //     scope: this
-        // });
-
-        Deft.Promise.all([this._getLastDayInformationForIteration(row.get('Iteration'))],this).then({
-            success: function(snapshot_groups) {
-                this.logger.log('_getLastDayInformationForIteration success', snapshot_groups);
-                Ext.Array.each(snapshot_groups, function(snapshots,idx){
-                    Ext.Array.each(snapshots, function(snapshot){
-                        //console.log('snapshot:', snapshot.get('PlanEstimate') || 0 , idx);
-                        row.addToFinalDayAccepted(snapshot.get('PlanEstimate') || 0 , idx);
-                    });
+        this._getLastDayInformationForIteration(row.get('Iteration')).then({
+            success: function(snapshots) {
+                this.logger.log('_getLastDayInformationForIteration success', snapshots);
+                Ext.Array.each(snapshots, function(snapshot){
+                    //console.log('snapshot:', snapshot.get('PlanEstimate') || 0 , idx);
+                    row.addToFinalDayAccepted(snapshot.get('PlanEstimate') || 0 , 0);
                 });
                 row.updateAverageLastDayAccepted();
                 deferred.resolve(row);
