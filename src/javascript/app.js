@@ -118,21 +118,21 @@ Ext.define("TSIterationSummary", {
     _gatherIterationInformationForRow: function(iteration_name,row){
         var me = this;
 
-        //return Deft.Chain.sequence([
-        //    function(){ return me._gatherBaseIterationInformationForRow(iteration_name, row); },
-        //    function(){ return me._gatherFirstDayInformationForRow(iteration_name, row); },
-        //    function(){ return me._gatherLastDayInformationForRow(iteration_name, row); },
-        //    function(){ return me._gatherStoriesInIterationForRow(iteration_name, row); },
-        //    function(){ return me._determineSpillOutPointsInIterationForRow(iteration_name, row); }
-        //], this);
-
-        return Deft.Promise.all([
-            me._gatherBaseIterationInformationForRow(iteration_name, row),
-            me._gatherFirstDayInformationForRow(iteration_name, row),
-            me._gatherLastDayInformationForRow(iteration_name, row),
-            me._gatherStoriesInIterationForRow(iteration_name, row),
-            me._determineSpillOutPointsInIterationForRow(iteration_name, row)
+        return Deft.Chain.sequence([
+           function(){ return me._gatherBaseIterationInformationForRow(iteration_name, row); },
+           function(){ return me._gatherFirstDayInformationForRow(iteration_name, row); },
+           function(){ return me._gatherLastDayInformationForRow(iteration_name, row); },
+           function(){ return me._gatherStoriesInIterationForRow(iteration_name, row); },
+           function(){ return me._determineSpillOutPointsInIterationForRow(iteration_name, row); }
         ], this);
+
+        // return Deft.Promise.all([
+        //     me._gatherBaseIterationInformationForRow(iteration_name, row),
+        //     me._gatherFirstDayInformationForRow(iteration_name, row),
+        //     me._gatherLastDayInformationForRow(iteration_name, row),
+        //     me._gatherStoriesInIterationForRow(iteration_name, row),
+        //     me._determineSpillOutPointsInIterationForRow(iteration_name, row)
+        // ], this);
 
     },
     
@@ -246,14 +246,14 @@ Ext.define("TSIterationSummary", {
         // 
         var promises = [];
         Ext.Array.each([iteration,iteration_minus_1,iteration_minus_2],function(iteration){
-            //promises.push(function(){
-            //    return me._getFirstDayInformationForIteration(iteration);
-            //});
-            promises.push(me._getFirstDayInformationForIteration(iteration));
+            promises.push(function(){
+               return me._getFirstDayInformationForIteration(iteration);
+            });
+            // promises.push(me._getFirstDayInformationForIteration(iteration));
         });
         
-        //Deft.Chain.sequence(promises,this).then({
-        Deft.Promise.all(promises,this).then({
+        Deft.Chain.sequence(promises,this).then({
+        // Deft.Promise.all(promises,this).then({
         success: function(snapshot_groups) {
                 Ext.Array.each(snapshot_groups, function(snapshots,idx) {
                     Ext.Array.each(snapshots, function(snapshot){
@@ -277,7 +277,7 @@ Ext.define("TSIterationSummary", {
         } else {
             var iteration_oid =  iteration.get('ObjectID');
             var iteration_start = iteration.get('StartDate');
-            var end_of_first_day = Rally.util.DateTime.add(iteration_start,'day',1);
+            var end_of_first_day = Rally.util.DateTime.add(iteration_start,'day',3);
             
             filters.push({property:'__At',value:Rally.util.DateTime.toIsoString(end_of_first_day)});
             filters.push({property:'Iteration',value:iteration_oid});
@@ -293,12 +293,30 @@ Ext.define("TSIterationSummary", {
     _gatherLastDayInformationForRow: function(iteration_name, row ) {
         var deferred = Ext.create('Deft.Deferred');
 
-        this._getLastDayInformationForIteration(row.get('Iteration')).then({
-            success: function(snapshots) {
-                this.logger.log('_getLastDayInformationForIteration success', snapshots);
-                Ext.Array.each(snapshots, function(snapshot){
-                    //console.log('snapshot:', snapshot.get('PlanEstimate') || 0 , idx);
-                    row.addToFinalDayAccepted(snapshot.get('PlanEstimate') || 0 , 0);
+        // this._getLastDayInformationForIteration(row.get('Iteration')).then({
+        //     success: function(snapshots) {
+        //         this.logger.log('_getLastDayInformationForIteration success', snapshots);
+        //         Ext.Array.each(snapshots, function(snapshot){
+        //             //console.log('snapshot:', snapshot.get('PlanEstimate') || 0 , idx);
+        //             row.addToFinalDayAccepted(snapshot.get('PlanEstimate') || 0 , 0);
+        //         });
+        //         row.updateAverageLastDayAccepted();
+        //         deferred.resolve(row);
+        //     },
+        //     failure: function(msg){
+        //         deferred.reject(msg);
+        //     },
+        //     scope: this
+        // });
+
+        Deft.Promise.all([this._getLastDayInformationForIteration(row.get('Iteration'))],this).then({
+            success: function(snapshot_groups) {
+                this.logger.log('_getLastDayInformationForIteration success', snapshot_groups);
+                Ext.Array.each(snapshot_groups, function(snapshots,idx){
+                    Ext.Array.each(snapshots, function(snapshot){
+                        //console.log('snapshot:', snapshot.get('PlanEstimate') || 0 , idx);
+                        row.addToFinalDayAccepted(snapshot.get('PlanEstimate') || 0 , idx);
+                    });
                 });
                 row.updateAverageLastDayAccepted();
                 deferred.resolve(row);
@@ -430,16 +448,16 @@ Ext.define("TSIterationSummary", {
 
         var promises = [];
         Ext.Array.each( spill_out_stories, function(story){
-            //promises.push(function() { return me._findSplitPlanEstimate(story); });
-            promises.push(me._findSplitPlanEstimate(story));
+            promises.push(function() { return me._findSplitPlanEstimate(story); });
+            //promises.push(me._findSplitPlanEstimate(story));
         });
         
         if ( promises.length === 0 ) {
             return row;
         }
         
-        //Deft.Chain.sequence(promises,this).then({
-        Deft.Promise.all(promises, this).then({
+        Deft.Chain.sequence(promises,this).then({
+        //Deft.Promise.all(promises, this).then({
             success:  function(stories) {
               //  console.log('stories that were spilled', stories);
                 
@@ -682,9 +700,9 @@ Ext.define("TSIterationSummary", {
                 text: 'Story Points',
                 columns: [
                     { dataIndex:'_TotalLastDayAccepted', text: 'Velocity', draggable: false, hideable: false, renderer: this.velocityRenderer},
-                    { dataIndex:'_TotalPlannedVelocity', text:'Planned Velocity', draggable: false, hideable: false},
+                    { dataIndex:'_TotalPlannedVelocity', text:'Available', draggable: false, hideable: false},
                     //{ dataIndex:'_TotalPlanEstimate', text: 'Plan Estimate', draggable: false, hideable: false}
-                    { dataIndex:'_TotalFirstDayPlanEstimate', text: 'First Day Plan Estimate', draggable: false, hideable: false}
+                    { dataIndex:'_TotalFirstDayPlanEstimate', text: 'Planned', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,
@@ -700,9 +718,9 @@ Ext.define("TSIterationSummary", {
             columns: [{ 
                 text: 'Story Count',
                 columns: [
-                    { dataIndex: 'TotalCount', text: 'Total Scheduled', csvText: 'Total Count', draggable: false, hideable: false},
-                    { dataIndex: 'CompletedCount', text: 'Completed State', csvText: 'Completed Count', draggable: false, hideable: false},
-                    { dataIndex: 'AcceptedCount', text:'Accepted State', csvText: 'Accepted Count', draggable: false, hideable: false}
+                    { dataIndex: 'TotalCount', text: 'Scheduled', csvText: 'Total Count', draggable: false, hideable: false},
+                    { dataIndex: 'CompletedCount', text: 'Completed', csvText: 'Completed Count', draggable: false, hideable: false},
+                    { dataIndex: 'AcceptedCount', text:'Accepted', csvText: 'Accepted Count', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,
