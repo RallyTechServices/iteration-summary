@@ -3,13 +3,13 @@
 <head>
     <title>TS Iteration Summary</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Thu Jul 06 2017 13:25:36 GMT-0700 (PDT) -->
+    <!--  Build Date: Wed Jul 12 2017 14:43:54 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Jul 06 2017 13:25:36 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Wed Jul 12 2017 14:43:54 GMT-0700 (PDT)";
         var STORY    = "US676";
         var BUILDER  = "rajan08";
-        var CHECKSUM = 169636828450;
+        var CHECKSUM = 169545216316;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -2618,9 +2618,9 @@ Ext.define("TSIterationSummary", {
             { 
                 text: 'Story Points',
                 columns: [
-                    { dataIndex: 'TotalSize', text:'Total Scheduled', csvText:'Total Size', draggable: false, hideable: false},
-                    { dataIndex: 'CompletedSize', text: 'Completed State', csvText: 'Completed Size', draggable: false, hideable: false},
-                    { dataIndex: 'AcceptedSize', text: 'Accepted State', csvText: 'Accepted Size', draggable: false, hideable: false}
+                    { dataIndex: 'TotalSize', text:'Scheduled', csvText:'Total Size', draggable: false, hideable: false},
+                    { dataIndex: 'CompletedSize', text: 'Completed', csvText: 'Completed Size', draggable: false, hideable: false},
+                    { dataIndex: 'AcceptedSize', text: 'Accepted', csvText: 'Accepted Size', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,

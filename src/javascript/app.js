@@ -711,9 +711,9 @@ Ext.define("TSIterationSummary", {
             { 
                 text: 'Story Points',
                 columns: [
-                    { dataIndex: 'TotalSize', text:'Total Scheduled', csvText:'Total Size', draggable: false, hideable: false},
-                    { dataIndex: 'CompletedSize', text: 'Completed State', csvText: 'Completed Size', draggable: false, hideable: false},
-                    { dataIndex: 'AcceptedSize', text: 'Accepted State', csvText: 'Accepted Size', draggable: false, hideable: false}
+                    { dataIndex: 'TotalSize', text:'Scheduled', csvText:'Total Size', draggable: false, hideable: false},
+                    { dataIndex: 'CompletedSize', text: 'Completed', csvText: 'Completed Size', draggable: false, hideable: false},
+                    { dataIndex: 'AcceptedSize', text: 'Accepted', csvText: 'Accepted Size', draggable: false, hideable: false}
                 ],
                 draggable: false, 
                 hideable: false,
