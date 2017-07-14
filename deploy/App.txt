@@ -3,13 +3,13 @@
 <head>
     <title>TS Iteration Summary</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Wed Jul 12 2017 14:43:54 GMT-0700 (PDT) -->
+    <!--  Build Date: Fri Jul 14 2017 16:43:33 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Jul 12 2017 14:43:54 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Fri Jul 14 2017 16:43:33 GMT-0700 (PDT)";
         var STORY    = "US676";
         var BUILDER  = "rajan08";
-        var CHECKSUM = 169545216316;
+        var CHECKSUM = 169999540718;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -1960,13 +1960,22 @@ Ext.define("TSIterationSummary", {
                 context: context,
                 remoteFilter: false,
                 autoLoad: true
-            },
-            listeners: {
-                scope: this,
-                change: this._updateData
             }
         });
         
+        container.add({
+            xtype: 'rallybutton',
+            text: 'Go',
+            margin: '10 10 10 10',
+            defaultAlign: 'right',
+            listeners: {
+                click: this._updateData,
+                scope: this
+            }
+        })
+
+
+
         container.add({xtype:'container',flex:1});
         
         container.add({

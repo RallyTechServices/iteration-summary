@@ -53,13 +53,22 @@ Ext.define("TSIterationSummary", {
                 context: context,
                 remoteFilter: false,
                 autoLoad: true
-            },
-            listeners: {
-                scope: this,
-                change: this._updateData
             }
         });
         
+        container.add({
+            xtype: 'rallybutton',
+            text: 'Go',
+            margin: '10 10 10 10',
+            defaultAlign: 'right',
+            listeners: {
+                click: this._updateData,
+                scope: this
+            }
+        })
+
+
+
         container.add({xtype:'container',flex:1});
         
         container.add({
