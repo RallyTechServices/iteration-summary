@@ -34,6 +34,10 @@ Ext.define('TSRow',{
         //{ name: '_AverageLastDayAcceptedMinus1', defaultValue: 0, type: 'number'},
         //{ name: '_AverageLastDayAcceptedMinus2', defaultValue: 0, type: 'number'},
 
+        { name: '_TotalScheduled3DaysPrior', type:'number', defaultValue: 0 }, // rolled up
+        { name: '_TotalScheduled3DaysPriorCount', type:'number', defaultValue: 0 }, // rolled up
+
+
         { name: 'TotalCount', type: 'number', defaultValue: 0},
         { name: 'AcceptedCount', type: 'number', defaultValue: 0},
         { name: 'CompletedCount', type:'number', defaultValue: 0},
@@ -100,6 +104,34 @@ Ext.define('TSRow',{
         
     },
     
+    addToScheduled3DaysPrior: function(value,iteration_index) {
+        var new_value = value || 0;
+        var fields = ['_TotalScheduled3DaysPrior']; 
+        var field = fields[iteration_index];
+
+        var current = this.get(field) || 0;
+        this.set(field, current + new_value );
+
+        if ( this.get('Parent') ) {
+            this.get('Parent').addToScheduled3DaysPrior(value,iteration_index); 
+        }
+        
+    },
+
+    addToScheduled3DaysPriorCount: function(value,iteration_index) {
+        var new_value = value || 0;
+        var fields = ['_TotalScheduled3DaysPriorCount']; 
+        var field = fields[iteration_index];
+
+        var current = this.get(field) || 0;
+        this.set(field, current + new_value );
+
+        if ( this.get('Parent') ) {
+            this.get('Parent').addToScheduled3DaysPriorCount(value,iteration_index); 
+        }
+        
+    },    
+
     getSpillOutStories: function() {
         var me = this,
             stories = this.get('Stories') || [];
@@ -180,7 +212,7 @@ Ext.define('TSRow',{
             '_TotalPlannedVelocity','_TotalPlanEstimate',
             '_TotalFirstDayPlanEstimate','_TotalFirstDayPlanEstimateMinus1','_TotalFirstDayPlanEstimateMinus2',
             '_TotalLastDayAccepted','_TotalLastDayAcceptedMinus1','_TotalLastDayAcceptedMinus2','_TotalLastDayAcceptedMinus3','_TotalLastDayAcceptedMinus4',
-            '_AverageLastDayAccepted','_AverageLastDayAcceptedMinus1','_AverageLastDayAcceptedMinus2'
+            '_AverageLastDayAccepted','_AverageLastDayAcceptedMinus1','_AverageLastDayAcceptedMinus2','_TotalScheduled3DaysPrior','_TotalScheduled3DaysPriorCount'
         ];
 
         this.set('Stories',[]);

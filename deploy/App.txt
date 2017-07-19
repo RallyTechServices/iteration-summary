@@ -3,13 +3,13 @@
 <head>
     <title>TS Iteration Summary</title>
     <!--  (c) 2016 CA Technologies.  All Rights Reserved. -->
-    <!--  Build Date: Fri Jul 14 2017 16:43:33 GMT-0700 (PDT) -->
+    <!--  Build Date: Wed Jul 19 2017 16:38:38 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Jul 14 2017 16:43:33 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Wed Jul 19 2017 16:38:38 GMT-0700 (PDT)";
         var STORY    = "US676";
         var BUILDER  = "rajan08";
-        var CHECKSUM = 169999540718;
+        var CHECKSUM = 182992856473;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -1749,6 +1749,10 @@ Ext.define('TSRow',{
         //{ name: '_AverageLastDayAcceptedMinus1', defaultValue: 0, type: 'number'},
         //{ name: '_AverageLastDayAcceptedMinus2', defaultValue: 0, type: 'number'},
 
+        { name: '_TotalScheduled3DaysPrior', type:'number', defaultValue: 0 }, // rolled up
+        { name: '_TotalScheduled3DaysPriorCount', type:'number', defaultValue: 0 }, // rolled up
+
+
         { name: 'TotalCount', type: 'number', defaultValue: 0},
         { name: 'AcceptedCount', type: 'number', defaultValue: 0},
         { name: 'CompletedCount', type:'number', defaultValue: 0},
@@ -1815,6 +1819,34 @@ Ext.define('TSRow',{
         
     },
     
+    addToScheduled3DaysPrior: function(value,iteration_index) {
+        var new_value = value || 0;
+        var fields = ['_TotalScheduled3DaysPrior']; 
+        var field = fields[iteration_index];
+
+        var current = this.get(field) || 0;
+        this.set(field, current + new_value );
+
+        if ( this.get('Parent') ) {
+            this.get('Parent').addToScheduled3DaysPrior(value,iteration_index); 
+        }
+        
+    },
+
+    addToScheduled3DaysPriorCount: function(value,iteration_index) {
+        var new_value = value || 0;
+        var fields = ['_TotalScheduled3DaysPriorCount']; 
+        var field = fields[iteration_index];
+
+        var current = this.get(field) || 0;
+        this.set(field, current + new_value );
+
+        if ( this.get('Parent') ) {
+            this.get('Parent').addToScheduled3DaysPriorCount(value,iteration_index); 
+        }
+        
+    },    
+
     getSpillOutStories: function() {
         var me = this,
             stories = this.get('Stories') || [];
@@ -1895,7 +1927,7 @@ Ext.define('TSRow',{
             '_TotalPlannedVelocity','_TotalPlanEstimate',
             '_TotalFirstDayPlanEstimate','_TotalFirstDayPlanEstimateMinus1','_TotalFirstDayPlanEstimateMinus2',
             '_TotalLastDayAccepted','_TotalLastDayAcceptedMinus1','_TotalLastDayAcceptedMinus2','_TotalLastDayAcceptedMinus3','_TotalLastDayAcceptedMinus4',
-            '_AverageLastDayAccepted','_AverageLastDayAcceptedMinus1','_AverageLastDayAcceptedMinus2'
+            '_AverageLastDayAccepted','_AverageLastDayAcceptedMinus1','_AverageLastDayAcceptedMinus2','_TotalScheduled3DaysPrior','_TotalScheduled3DaysPriorCount'
         ];
 
         this.set('Stories',[]);
@@ -1974,8 +2006,6 @@ Ext.define("TSIterationSummary", {
             }
         })
 
-
-
         container.add({xtype:'container',flex:1});
         
         container.add({
@@ -2039,7 +2069,8 @@ Ext.define("TSIterationSummary", {
            function(){ return me._gatherFirstDayInformationForRow(iteration_name, row); },
            function(){ return me._gatherLastDayInformationForRow(iteration_name, row); },
            function(){ return me._gatherStoriesInIterationForRow(iteration_name, row); },
-           function(){ return me._determineSpillOutPointsInIterationForRow(iteration_name, row); }
+           function(){ return me._determineSpillOutPointsInIterationForRow(iteration_name, row); },
+           function(){ return me._gatherScheduledInformationForRow(iteration_name, row); }
         ], this);
 
         // return Deft.Promise.all([
@@ -2047,7 +2078,8 @@ Ext.define("TSIterationSummary", {
         //     me._gatherFirstDayInformationForRow(iteration_name, row),
         //     me._gatherLastDayInformationForRow(iteration_name, row),
         //     me._gatherStoriesInIterationForRow(iteration_name, row),
-        //     me._determineSpillOutPointsInIterationForRow(iteration_name, row)
+        //     me._determineSpillOutPointsInIterationForRow(iteration_name, row),
+        //     me._gatherScheduledInformationForRow(iteration_name, row)
         // ], this);
 
     },
@@ -2303,6 +2335,49 @@ Ext.define("TSIterationSummary", {
     //    };
     //    return TSUtilities.loadWsapiRecords(config);
     //},
+
+    //Get scheduled information 3 days before the last day of iteration.
+    _gatherScheduledInformationForRow: function(iteration_name, row ) {
+        var deferred = Ext.create('Deft.Deferred');
+
+        this._getScheduledInformationForIteration(row.get('Iteration')).then({
+            success: function(snapshots) {
+                this.logger.log('_getLastDayInformationForIteration success', snapshots);
+                Ext.Array.each(snapshots, function(snapshot){
+                    row.addToScheduled3DaysPrior(snapshot.get('PlanEstimate') || 0 , 0); 
+                    row.addToScheduled3DaysPriorCount(1 , 0); 
+                });
+                //row.updateAverageLastDayAccepted();
+                deferred.resolve(row);
+            },
+            failure: function(msg){
+                deferred.reject(msg);
+            },
+            scope: this
+        });
+        return deferred.promise;
+    },
+    
+    _getScheduledInformationForIteration: function(iteration) {
+        var filters = [];
+        if ( Ext.isEmpty(iteration) ) {
+            filters.push( { property:'ObjectID', value: -1 } );
+        } else {
+            var iteration_oid =  iteration.get('ObjectID');
+            var iteration_end = iteration.get('EndDate');
+            
+            var three_days_prior = Rally.util.DateTime.add(iteration_end,'day',-3);
+
+            filters.push({property:'__At',value:Rally.util.DateTime.toIsoString(three_days_prior)});
+            filters.push({property:'Iteration',value:iteration_oid});
+        }
+
+        var config = {
+            filters: filters,
+            fetch: ['ObjectID','PlanEstimate','FormattedID']
+        };
+        return TSUtilities.loadLookbackRecords(config);
+    },
 
 
     _gatherStoriesInIterationForRow: function( iteration_name, row ) {
@@ -2616,7 +2691,7 @@ Ext.define("TSIterationSummary", {
             columns: [{ 
                 text: 'Story Count',
                 columns: [
-                    { dataIndex: 'TotalCount', text: 'Scheduled', csvText: 'Total Count', draggable: false, hideable: false},
+                    { dataIndex: '_TotalScheduled3DaysPriorCount', text: 'Scheduled', csvText: 'Total Count', draggable: false, hideable: false},
                     { dataIndex: 'CompletedCount', text: 'Completed', csvText: 'Completed Count', draggable: false, hideable: false},
                     { dataIndex: 'AcceptedCount', text:'Accepted', csvText: 'Accepted Count', draggable: false, hideable: false}
                 ],
@@ -2627,7 +2702,7 @@ Ext.define("TSIterationSummary", {
             { 
                 text: 'Story Points',
                 columns: [
-                    { dataIndex: 'TotalSize', text:'Scheduled', csvText:'Total Size', draggable: false, hideable: false},
+                    { dataIndex: '_TotalScheduled3DaysPrior', text:'Scheduled', csvText:'Total Size', draggable: false, hideable: false},
                     { dataIndex: 'CompletedSize', text: 'Completed', csvText: 'Completed Size', draggable: false, hideable: false},
                     { dataIndex: 'AcceptedSize', text: 'Accepted', csvText: 'Accepted Size', draggable: false, hideable: false}
                 ],
