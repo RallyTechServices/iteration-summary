@@ -67,8 +67,6 @@ Ext.define("TSIterationSummary", {
             }
         })
 
-
-
         container.add({xtype:'container',flex:1});
         
         container.add({
@@ -132,7 +130,8 @@ Ext.define("TSIterationSummary", {
            function(){ return me._gatherFirstDayInformationForRow(iteration_name, row); },
            function(){ return me._gatherLastDayInformationForRow(iteration_name, row); },
            function(){ return me._gatherStoriesInIterationForRow(iteration_name, row); },
-           function(){ return me._determineSpillOutPointsInIterationForRow(iteration_name, row); }
+           function(){ return me._determineSpillOutPointsInIterationForRow(iteration_name, row); },
+           function(){ return me._gatherScheduledInformationForRow(iteration_name, row); }
         ], this);
 
         // return Deft.Promise.all([
@@ -140,7 +139,8 @@ Ext.define("TSIterationSummary", {
         //     me._gatherFirstDayInformationForRow(iteration_name, row),
         //     me._gatherLastDayInformationForRow(iteration_name, row),
         //     me._gatherStoriesInIterationForRow(iteration_name, row),
-        //     me._determineSpillOutPointsInIterationForRow(iteration_name, row)
+        //     me._determineSpillOutPointsInIterationForRow(iteration_name, row),
+        //     me._gatherScheduledInformationForRow(iteration_name, row)
         // ], this);
 
     },
@@ -396,6 +396,49 @@ Ext.define("TSIterationSummary", {
     //    };
     //    return TSUtilities.loadWsapiRecords(config);
     //},
+
+    //Get scheduled information 3 days before the last day of iteration.
+    _gatherScheduledInformationForRow: function(iteration_name, row ) {
+        var deferred = Ext.create('Deft.Deferred');
+
+        this._getScheduledInformationForIteration(row.get('Iteration')).then({
+            success: function(snapshots) {
+                this.logger.log('_getLastDayInformationForIteration success', snapshots);
+                Ext.Array.each(snapshots, function(snapshot){
+                    row.addToScheduled3DaysPrior(snapshot.get('PlanEstimate') || 0 , 0); 
+                    row.addToScheduled3DaysPriorCount(1 , 0); 
+                });
+                //row.updateAverageLastDayAccepted();
+                deferred.resolve(row);
+            },
+            failure: function(msg){
+                deferred.reject(msg);
+            },
+            scope: this
+        });
+        return deferred.promise;
+    },
+    
+    _getScheduledInformationForIteration: function(iteration) {
+        var filters = [];
+        if ( Ext.isEmpty(iteration) ) {
+            filters.push( { property:'ObjectID', value: -1 } );
+        } else {
+            var iteration_oid =  iteration.get('ObjectID');
+            var iteration_end = iteration.get('EndDate');
+            
+            var three_days_prior = Rally.util.DateTime.add(iteration_end,'day',-3);
+
+            filters.push({property:'__At',value:Rally.util.DateTime.toIsoString(three_days_prior)});
+            filters.push({property:'Iteration',value:iteration_oid});
+        }
+
+        var config = {
+            filters: filters,
+            fetch: ['ObjectID','PlanEstimate','FormattedID']
+        };
+        return TSUtilities.loadLookbackRecords(config);
+    },
 
 
     _gatherStoriesInIterationForRow: function( iteration_name, row ) {
@@ -709,7 +752,7 @@ Ext.define("TSIterationSummary", {
             columns: [{ 
                 text: 'Story Count',
                 columns: [
-                    { dataIndex: 'TotalCount', text: 'Scheduled', csvText: 'Total Count', draggable: false, hideable: false},
+                    { dataIndex: '_TotalScheduled3DaysPriorCount', text: 'Scheduled', csvText: 'Total Count', draggable: false, hideable: false},
                     { dataIndex: 'CompletedCount', text: 'Completed', csvText: 'Completed Count', draggable: false, hideable: false},
                     { dataIndex: 'AcceptedCount', text:'Accepted', csvText: 'Accepted Count', draggable: false, hideable: false}
                 ],
@@ -720,7 +763,7 @@ Ext.define("TSIterationSummary", {
             { 
                 text: 'Story Points',
                 columns: [
-                    { dataIndex: 'TotalSize', text:'Scheduled', csvText:'Total Size', draggable: false, hideable: false},
+                    { dataIndex: '_TotalScheduled3DaysPrior', text:'Scheduled', csvText:'Total Size', draggable: false, hideable: false},
                     { dataIndex: 'CompletedSize', text: 'Completed', csvText: 'Completed Size', draggable: false, hideable: false},
                     { dataIndex: 'AcceptedSize', text: 'Accepted', csvText: 'Accepted Size', draggable: false, hideable: false}
                 ],
